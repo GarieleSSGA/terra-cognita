@@ -28,9 +28,19 @@ def main():
     print(f"  zona     : {plan.get('zona')}")
     print(f"  fallback : {'sin Ollama: ' + plan.get('ollama_error', '') if plan.get('ollama_error') else 'no'}")
 
-    print("\n== CONTEXTO DataHub ==")
-    for item in resultado.get("contexto_datahub", []):
-        print(f"  {item}")
+    print("\n== CONTEXTO DataHub (via MCP) ==")
+    contexto = resultado.get("contexto_datahub", {})
+    if isinstance(contexto, dict):
+        contenido = contexto.get("content", [])
+        if contenido:
+            for pieza in contenido[:3]:
+                print(f"  {str(pieza)[:400]}")
+        elif contexto.get("error"):
+            print(f"  AVISO: {contexto['error'][:120]}")
+        else:
+            print("  (búsqueda sin resultados)")
+    else:
+        print(f"  {contexto}")
 
     print("\n== RESULTADO ==")
     for k, v in resultado.items():

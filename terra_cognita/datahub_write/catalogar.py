@@ -1,8 +1,8 @@
 """Write-back: registra los resultados del análisis en DataHub.
 
-Es lo que hace que el agente 'contribuya al grafo' (20% del puntaje):
-cada análisis crea un dataset nuevo con sus métricas y linaje hacia
-las fuentes consultadas.
+Cierra el ciclo del agente: cada análisis crea en el grafo un dataset con:
+- datasetProperties  -> quién (agente), qué, cuándo, métricas del análisis
+- upstreamLineage    -> de qué dataset fuente se alimentó (linaje)
 
 Estrategia resiliente: si el GMS no responde, el resultado se guarda
 localmente (data/resultados_catalogados/) y la demo no se rompe.
@@ -12,53 +12,78 @@ from pathlib import Path
 
 from ..config import cargar_config
 
-
-def _urn_dataset(zona: str) -> str:
-    codigo = f"analisis_{zona}_{uuid.uuid4().hex[:6]}"
-    return f"urn:li:dataset:(urn:li:dataPlatform:terraCognita,{codigo},PROD)"
+PLATAFORMA = "terraCognita"
 
 
-def _propiedades(resultado: dict, consulta: str) -> dict:
-    """Construye el dict de propiedades (texto libre) del dataset."""
-    resumen = resultado.get("resumen", {})
+def _urn_dataset(nombre: str) -> str:
+    return f"urn:li:dataset:(urn:li:dataPlatform:{PLATAFORMA},{nombre},PROD)"
+
+
+def _emitter():
+    from datahub.emitter.rest_emitter import DatahubRestEmitter
+    cfg = cargar_config()
+    return DatahubRestEmitter(gms_server=cfg["datahub"]["gms_url"])
+
+
+def _emit_mce(urn: str, aspectos: list) -> None:
+    from datahub.metadata.schema_classes import (
+        DatasetSnapshotClass, MetadataChangeEventClass)
+    snapshot = DatasetSnapshotClass(urn=urn, aspects=aspectos)
+    _emitter().emit_mce(MetadataChangeEventClass(proposedSnapshot=snapshot))
+
+
+def _props(resultado: dict, consulta: str) -> dict:
+    """Propiedades: consulta, zona, estado, análisis, métricas, raster."""
     return {
         "consulta": consulta,
         "zona": resultado.get("zona"),
         "estado": resultado.get("estado"),
         "analisis": resultado.get("plan", {}).get("analisis"),
-        "metricas": resumen,
+        "metricas": resultado.get("resumen", {}),
         "raster": resultado.get("raster"),
     }
 
 
+def asegurar_raster_fuente(zona: str, ruta_raster: str) -> str:
+    """Crea (si no existe) el dataset fuente: el raster analizado."""
+    from datahub.metadata.schema_classes import DatasetPropertiesClass
+    urn = _urn_dataset(f"raster_{zona}_sintetico")
+    aspecto = DatasetPropertiesClass(
+        name=f"raster_{zona}",
+        qualifiedName=urn,
+        description=(
+            f"Raster fuente del analisis en {zona} ({ruta_raster}). "
+            "Generado por Terra Cognita para la demo rapida."
+        ),
+    )
+    _emit_mce(urn, [aspecto])
+    return urn
+
+
 def escribir_resultado(resultado: dict, consulta: str) -> str:
-    """Crea el dataset en DataHub vía la API REST. Devuelve la URN."""
-    cfg = cargar_config()
-    gms = cfg["datahub"]["gms_url"]
-    urn = _urn_dataset(resultado.get("zona", "zona"))
-    props = _propiedades(resultado, consulta)
+    """Crea el dataset del análisis + linaje hacia el raster fuente."""
+    from datahub.metadata.schema_classes import (
+        DatasetPropertiesClass, UpstreamClass, UpstreamLineageClass)
+
+    props = _props(resultado, consulta)
+    zona = resultado.get("zona", "zona")
+    urn = _urn_dataset(f"analisis_{zona}_{uuid.uuid4().hex[:6]}")
+    urn_fuente = asegurar_raster_fuente(zona, str(resultado.get("raster", "")))
 
     try:
-        from datahub.emitter.rest_emitter import DatahubRestEmitter
-        from datahub.metadata.schema_classes import (
-            DatasetPropertiesClass,
-            DatasetSnapshot,
-            MetadataChangeEventClass,
-        )
-
-        emitter = DatahubRestEmitter(gms_url=gms)
-        aspecto = DatasetPropertiesClass(
-            name=f"analisis_{resultado.get('zona', 'zona')}",
+        aspecto_props = DatasetPropertiesClass(
+            name=f"analisis_{zona}",
+            qualifiedName=urn,
             description=(
-                f"Resultado del analisis de {resultado.get('estado')} para "
-                f"{resultado.get('zona')}. Consulta: {consulta}. "
+                f"Resultado del analisis {resultado.get('estado')} para "
+                f"{zona}. Consulta: {consulta}. "
                 f"Metricas: {resumen_json(props)}"
             ),
         )
-        evento = MetadataChangeEventClass(
-            proposedSnapshot=DatasetSnapshot(
-                urn=urn, aspects=[aspecto]))
-        emitter.emit_mce(evento)
+        aspecto_lineage = UpstreamLineageClass(
+            upstreams=[UpstreamClass(dataset=urn_fuente, type="TRANSFORMED")],
+        )
+        _emit_mce(urn, [aspecto_props, aspecto_lineage])
         return urn
     except Exception as exc:
         ruta = Path("data/resultados_catalogados")

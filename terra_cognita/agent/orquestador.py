@@ -64,12 +64,13 @@ class Orquestador:
                 "datos_necesarios": [analisis], "ollama_error": error}
 
     # ------------------------------------------------------------------
-    def buscar_contexto_datahub(self, tema: str) -> list:
-        """Pregunta a DataHub qué datasets tiene del tema (contexto = no alucinar)."""
-        resultado = self.datahub.search_datasets(tema)
-        if isinstance(resultado, dict) and "error" in resultado:
-            return [{"aviso": f"DataHub MCP no disponible: {resultado['error']}"}]
-        return resultado
+    def buscar_contexto_datahub(self, tema: str) -> dict:
+        """Consulta a DataHub qué sabe del tema (contexto = no alucinar).
+
+        Devuelve los datasets encontrados o, si el MCP no está disponible,
+        un aviso claro — el flujo continúa con datos locales.
+        """
+        return self.datahub.search_datasets(tema)
 
     # ------------------------------------------------------------------
     def ejecutar(self, consulta: str) -> dict:
