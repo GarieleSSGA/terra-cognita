@@ -1,0 +1,1 @@
+"""Cliente MCP de DataHub: discovery de datasets, esquemas y linaje."""

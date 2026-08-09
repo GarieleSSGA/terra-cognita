@@ -1,0 +1,1 @@
+"""Capa geoespacial: rasters sintéticos (demo rápida) y Google Earth Engine (real)."""

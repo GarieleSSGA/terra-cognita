@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+config/*.local.*
+data/descargados/*
+!data/descargados/.gitkeep
+data/sinteticos/*.tif
+!data/sinteticos/.gitkeep
+examples/tmp/
+*.log
+.idea/
+.vscode/
