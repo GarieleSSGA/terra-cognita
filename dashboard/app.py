@@ -18,16 +18,42 @@ st.set_page_config(page_title="Terra Cognita", page_icon="🛰️", layout="wide
 
 st.html("""
 <style>
-  .stApp { background: linear-gradient(180deg, #0b1a2a 0%, #0e1117 40%); }
-  h1 { color: #36c1a0; }
-  h2, h3 { color: #7ec8ff; }
-  [data-testid="stMetricValue"] { color: #36c1a0; font-size: 1.6rem; }
-  [data-testid="stMetricLabel"] { color: #8ea6b8; }
+  .stApp {
+    background: radial-gradient(1200px 600px at 20% -10%, #12303f 0%, #0e1117 45%);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  [data-testid="stAppViewContainer"] {
+    background: radial-gradient(1200px 600px at 20% -10%, #12303f 0%, #0e1117 45%);
+  }
+  h1 { font-weight: 800; letter-spacing: -0.5px; }
+  h1, h2, h3 { color: #36c1a0 !important; }
+  [data-testid="stMetric"] {
+    background: linear-gradient(160deg, #13202c 0%, #0d141d 100%);
+    border: 1px solid #1e3a4a; border-radius: 14px; padding: 14px 16px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  }
+  [data-testid="stMetricValue"] { color: #40e0b0; font-size: 1.7rem !important; }
+  [data-testid="stMetricLabel"] { color: #7ec8ff; text-transform: uppercase;
+    letter-spacing: .06em; font-size: .78rem !important; }
+  .stButton>button {
+    background: linear-gradient(90deg, #16a085, #36c1a0);
+    color: #04121a; font-weight: 700; border: none; border-radius: 10px;
+    padding: .55rem 2rem;
+  }
+  .stButton>button:hover { filter: brightness(1.12); }
+  [data-testid="stVerticalBlockBorderWrapper"] {
+    background: rgba(19,31,43,.55);
+    border: 1px solid #1e3a4a; border-radius: 16px;
+  }
+  [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; }
+  .stCaption { color: #7f94a5; }
 </style>
 """)
 
 st.markdown("# 🌍 Terra Cognita")
-st.markdown("Agente espacial · IA local + DataHub MCP + Google Earth Engine")
+st.markdown(
+    "**Agente espacial** · IA (opencode/local) + DataHub MCP + Google Earth "
+    "Engine · alertas Telegram")
 
 
 # ------------------------------------------------------------------ estado
@@ -122,45 +148,47 @@ with col_l:
         plan = res.get("plan", {})
         via = plan.get("via", "heurística" if plan.get("ollama_error") else "cerebro local")
         st.markdown("---")
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Análisis", plan.get("analisis", "?"))
-        c2.metric("Zona", res.get("zona", "?"))
-        c3.metric("Intérprete", via)
-        d = res.get("contexto_datahub", {})
-        if isinstance(d, dict) and d.get("error"):
-            st.warning(f"DataHub: {d['error'][:90]}")
-        else:
-            st.success("DataHub consultado vía MCP (contexto sin alucinar)")
+        with st.container(border=True):
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Análisis", plan.get("analisis", "?"))
+            c2.metric("Zona", res.get("zona", "?"))
+            c3.metric("Intérprete", via)
+            d = res.get("contexto_datahub", {})
+            if isinstance(d, dict) and d.get("error"):
+                st.warning(f"DataHub: {d['error'][:90]}")
+            else:
+                st.success("DataHub consultado vía MCP (contexto sin alucinar)")
 
-        estado = res.get("estado", "OK")
-        if "ALERTA" in str(estado):
-            st.error(f"🚨 {estado}")
-        elif "OBSERVACION" in str(estado):
-            st.warning(f"👀 {estado}")
-        else:
-            st.success(f"✅ {estado}")
-        st.write(res.get("resumen", res.get("detalle", "")))
+            estado = res.get("estado", "OK")
+            if "ALERTA" in str(estado):
+                st.error(f"🚨 {estado}")
+            elif "OBSERVACION" in str(estado):
+                st.warning(f"👀 {estado}")
+            else:
+                st.success(f"✅ {estado}")
+            st.write(res.get("resumen", res.get("detalle", "")))
 
         if res.get("serie"):
-            st.markdown("**Tendencia (área bajo umbral y NDVI medio por día):**")
-            st.dataframe(res["serie"], use_container_width=True)
-            try:
-                import pandas as pd
-                df = pd.DataFrame(res["serie"])
-                if "fecha" in df.columns:
-                    df = df.set_index("fecha")
-                gra1, gra2 = st.columns(2)
-                with gra1:
-                    st.caption("Área bajo umbral %")
-                    st.line_chart(df[["pct_bajo"]], height=220)
-                with gra2:
-                    st.caption("NDVI medio")
-                    st.line_chart(df[["media_ndvi"]], height=220)
-            except Exception as exc:
-                st.warning(f"Grafico de tendencia no disponible: {exc}")
-            st.write(f"Delta: {res.get('delta_pct'):+.1f}pp · "
-                     f"NDVI medio {res.get('delta_media_ndvi'):+.3f} · "
-                     f"Conclusión: {res.get('tendencia')}")
+            with st.container(border=True):
+                st.markdown("**Tendencia (área bajo umbral y NDVI medio por día):**")
+                st.dataframe(res["serie"], use_container_width=True)
+                try:
+                    import pandas as pd
+                    df = pd.DataFrame(res["serie"])
+                    if "fecha" in df.columns:
+                        df = df.set_index("fecha")
+                    gra1, gra2 = st.columns(2)
+                    with gra1:
+                        st.caption("Área bajo umbral %")
+                        st.line_chart(df[["pct_bajo"]], height=220)
+                    with gra2:
+                        st.caption("NDVI medio")
+                        st.line_chart(df[["media_ndvi"]], height=220)
+                except Exception as exc:
+                    st.warning(f"Grafico de tendencia no disponible: {exc}")
+                st.write(f"Delta: {res.get('delta_pct'):+.1f}pp · "
+                         f"NDVI medio {res.get('delta_media_ndvi'):+.3f} · "
+                         f"Conclusión: {res.get('tendencia')}")
 
         dias_map = {}
         if res.get("serie") and res.get("serie_rasters"):
@@ -169,19 +197,19 @@ with col_l:
                     dias_map[p["fecha"]] = r
         ruta_mapa = res.get("raster")
         if dias_map:
-            st.markdown("**Mapa NDVI por día (serie temporal):**")
-            dia = st.selectbox("Elige el día a visualizar:", list(dias_map.keys()))
+            dia = st.selectbox("🗓️ Elige el día a visualizar:", list(dias_map.keys()))
             ruta_mapa = dias_map.get(dia)
         elif res.get("serie"):
             ruta_mapa = res.get("serie_rasters", [None])[-1] or res.get("raster")
 
         if ruta_mapa and Path(ruta_mapa).exists():
-            st.markdown(f"**Mapa NDVI** — `{Path(ruta_mapa).name}`")
-            try:
-                m = _mapa_ndvi(ruta_mapa)
-                st.components.v1.html(m._repr_html_(), height=420)
-            except Exception as exc:
-                st.warning(f"No se pudo renderizar el mapa: {exc}")
+            with st.container(border=True):
+                st.markdown(f"**Mapa NDVI** — `{Path(ruta_mapa).name}`")
+                try:
+                    m = _mapa_ndvi(ruta_mapa)
+                    st.components.v1.html(m._repr_html_(), height=420)
+                except Exception as exc:
+                    st.warning(f"No se pudo renderizar el mapa: {exc}")
 
 with col_r:
     st.subheader("🛰️ Estado del stack")
