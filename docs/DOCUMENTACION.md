@@ -1,57 +1,57 @@
-# 📚 DOCUMENTACIÓN DEL PROYECTO — Terra Cognita
+# 📚 PROJECT DOCUMENTATION — Terra Cognita
 
-Agente de inteligencia espacial: consulta en lenguaje natural → plan (IA) →
-contexto en memoria (DataHub vía MCP) → análisis geoespacial (NDVI, lluvia,
-humedad, NDWI, LST, EVI) → write-back con linaje → reporte Telegram +
-dashboard con mapa.
+Spatial intelligence agent: natural-language query → plan (AI) →
+context from memory (DataHub via MCP) → geospatial analysis (NDVI,
+rainfall, soil moisture, NDWI, LST, EVI) → write-back with lineage →
+Telegram report + dashboard with map.
 
 **Hackathon:** DataHub Community Hackathon — "Agents that do real work".
 
 ---
 
-## 1. Lo que usamos y por qué (bondades de cada pieza)
+## 1. What we use and why (strengths of each piece)
 
-| Componente | Rol en el sistema | Bondad / aporte |
+| Component | Role in the system | Strength / contribution |
 |---|---|---|
-| **opencode (CLI)** | Intérprete principal del agente | IA potente con **0 RAM local**: en máquinas de 8 GB (con Docker encima) el agente sigue siendo inteligente. Demuestra que un geo-agente potente no requiere GPU. |
-| **Ollama + gemma3:1b** | Intérprete local privado | Cuando hay RAM suficiente, todo el razonamiento es 100 % local/privado (sin enviar datos fuera). |
-| **API LLM (DeepSeek/OpenAI-compatible)** | Respaldo | Comodín si opencode y Ollama no están: sigue funcionando con cualquier proveedor. |
-| **Heurística local** | Último rescate | La demo **nunca se cuelga**: si todos los intérpretes fallan, una heurística arma el plan y el flujo termina siempre. |
-| **DataHub (GMS + UI)** | Memoria del sistema | Grafo de datasets con **linaje**: cada análisis queda registrado y trazable (qué vino de qué). 29+ datasets, 5 de tendencia. |
-| **MCP Server DataHub (HTTP :8000)** | Puente de conocimiento | El agente **pregunta antes de actuar**: search, get_entities, schema, lineage → no alucina, razona sobre el grafo real. |
-| **DataHub write-back** | Cierre del ciclo | Los resultados **se escriben de vuelta al grafo** con `upstreamLineage`: otros agentes pueden heredar el análisis (requisito central del hackathon). |
-| **Google Earth Engine** | Datos reales | Código JS auto-generado (7 plantillas: NDVI/lluvia/humedad/NDWI/LST/EVI/serie) con bbox pequeño (~2 km) y **descarga automática** (`getDownloadURL`). |
-| **Rasters sintéticos** | Demo reproducible | Misma pipeline que los reales pero sin depender de APIs externas que fallan o demoran; cambiar a GEE real es una línea (`fuente_default: gee`). |
-| **Telegram bot** | Alerta/reporte | El agente **decide el mensaje**: alerta razonada según severidad o reporte siempre (`reporte_siempre: true`). Informe legible con tabla por día. |
-| **Streamlit + folium + branca** | Dashboard | Mapa NDVI interactivo con leyenda, selectbox por día de la serie, gráficos de tendencia, estado del stack en vivo. Todo local (localhost:8501). |
-| **rasterio + numpy** | Cálculo geoespacial | % de área bajo umbral, medias, desvíos, deltas y tendencia por día sobre GeoTIFF. |
-| **requests / yaml** | Infra | Llamadas MCP/DataHub/Telegram y configuración central (secretos fuera de git). |
+| **opencode (CLI)** | Main agent interpreter | Powerful AI with **0 local RAM**: on 8 GB machines (with Docker on top) the agent is still smart. Proves a powerful geo-agent doesn't need a GPU. |
+| **Ollama + gemma3:1b** | Private local interpreter | When there is enough RAM, all reasoning is 100 % local/private (no data leaves the machine). |
+| **LLM API (DeepSeek/OpenAI-compatible)** | Backup | Wildcard if opencode and Ollama are unavailable: works with any provider. |
+| **Local heuristic** | Last resort | The demo **never hangs**: if every interpreter fails, a heuristic builds the plan and the flow always finishes. |
+| **DataHub (GMS + UI)** | System memory | Dataset graph with **lineage**: every analysis is registered and traceable (what came from what). 29+ datasets, 5 trend summaries. |
+| **DataHub MCP Server (HTTP :8000)** | Knowledge bridge | The agent **asks before acting**: search, get_entities, schema, lineage → it does not hallucinate, it reasons over the real graph. |
+| **DataHub write-back** | Loop closure | Results **are written back into the graph** with `upstreamLineage`: other agents can inherit the analysis (central hackathon requirement). |
+| **Google Earth Engine** | Real data | Auto-generated JS code (7 templates: NDVI/rain/soil moisture/NDWI/LST/EVI/series) with a small bbox (~2 km) and **automatic download** (`getDownloadURL`). |
+| **Synthetic rasters** | Reproducible demo | Same pipeline as real data but without depending on APIs that fail or lag; switching to real GEE is one line (`source_default: gee`). |
+| **Telegram bot** | Alert/report | The agent **decides the message**: reasoned alert by severity or always-report (`reporte_siempre: true`). Readable report with per-day table. |
+| **Streamlit + folium + branca** | Dashboard | Interactive NDVI map with legend, day selector for the series, trend charts, live stack status. All local (localhost:8501). |
+| **rasterio + numpy** | Geospatial computing | % of area below threshold, means, deviations, deltas and per-day trend over GeoTIFF. |
+| **requests / yaml** | Infra | MCP/DataHub/Telegram calls and central config (secrets kept out of git). |
 
-## 2. Arquitectura en una imagen
+## 2. Architecture in one picture
 
 ```
-Usuario (español)
+User (Spanish)
    │
    ▼
-[AGENTE: opencode → Ollama → API → heurística]      ← cadena que nunca se rompe
-   │   plan: {analisis, zona, dias}
-   ├──► [DataHub MCP :8000]  ¿qué datasets hay? ¿de dónde vienen?  (no alucina)
-   ├──► [rasters sintéticos | GEE real Sentinel-2/CHIRPS/SMAP/MODIS]
-   ├──► [cálculo: % bajo umbral, medias, delta, tendencia, estado]
-   ├──► [código GEE auto-generado (descarga con getDownloadURL)]
-   ├──► [write-back DataHub: dataset por fecha + upstreamLineage]
-   └──► [Telegram: informe razonado] + [Dashboard: mapa/chat/gráficos]
+[AGENT: opencode → Ollama → API → heuristic]      ← chain that never breaks
+   │   plan: {analysis, zone, days}
+   ├──► [DataHub MCP :8000]  which datasets exist? where do they come from?  (no hallucination)
+   ├──► [synthetic rasters | real GEE Sentinel-2/CHIRPS/SMAP/MODIS]
+   ├──► [computing: % below threshold, means, delta, trend, state]
+   ├──► [auto-generated GEE code (download with getDownloadURL)]
+   ├──► [DataHub write-back: dataset per date + upstreamLineage]
+   └──► [Telegram: reasoned report] + [Dashboard: map/chat/charts]
 ```
 
-## 3. Instalación desde cero
+## 3. Install from scratch
 
 ```powershell
-# 1) Entorno
+# 1) Environment
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 
-# 2) Config (sin secretos en git)
-copy config\config.example.yaml config\config.yaml   # rellenar tokens
+# 2) Config (no secrets in git)
+copy config\config.example.yaml config\config.yaml   # fill in tokens
 
 # 3) DataHub (Docker Desktop)
 docker start datahub-mysql-1 datahub-opensearch-1 datahub-kafka-broker-1 `
@@ -59,42 +59,43 @@ docker start datahub-mysql-1 datahub-opensearch-1 datahub-kafka-broker-1 `
 $env:DATAHUB_GMS_HOST="localhost"; $env:DATAHUB_GMS_PORT="8080"; $env:DATAHUB_GMS_PROTOCOL="http"
 Start-Process .venv\Scripts\mcp-server-datahub.exe -ArgumentList "--transport","http" -WindowStyle Hidden
 
-# 4) Comandos útiles
-Remove-Item Env:CURL_CA_BUNDLE     # SIEMPRE al empezar sesión (CA del entorno rota)
+# 4) Useful commands
+Remove-Item Env:CURL_CA_BUNDLE     # ALWAYS when starting a session (broken env CA)
 .venv\Scripts\python.exe scripts\demo_temporal.py "dame la vegetacion de Lima de los ultimos 7 dias"
 .venv\Scripts\python.exe scripts\flujo_paso_a_paso.py --presentacion "dame la vegetacion de Lima"
 .venv\Scripts\python.exe -m streamlit run dashboard\app.py    # http://localhost:8501
 ```
 
-## 4. Estructura del repo
+## 4. Repository structure
 
 ```
 terra_cognita/
 ├── terra_cognita/
-│   ├── agent/          # orquestador: intérpretes + ciclo completo
-│   ├── datahub_mcp/    # cliente MCP HTTP (search, entities, lineage)
+│   ├── agent/          # orchestrator: interpreters + full loop
+│   ├── datahub_mcp/    # HTTP MCP client (search, entities, lineage)
 │   ├── datahub_write/  # write-back: escribir_resultado / escribir_serie
-│   ├── geo/            # sinteticos, analisis, gee (código JS), gee_codegen
+│   ├── geo/            # synthetic data, analysis, gee (JS code), gee_codegen
 │   └── alertas/        # telegram_bot (sendMessage/sendPhoto/sendDocument)
-├── dashboard/app.py    # Streamlit: mapa, chat, tendencia, estado
+├── dashboard/app.py    # Streamlit: map, chat, trend, status
 ├── scripts/            # flujo_paso_a_paso, demo_temporal, demo_rapida, probar_mcp
-├── config/             # config.yaml (local, ignorado) + config.example.yaml
-├── docs/               # ESTADO, BITACORA, FLUJO, BENEFICIOS, DOCUMENTACION, PRUEBAS
-├── data/               # rasters, series, descargas
-└── examples/           # salidas del agente (carpeta exigida por DataHub)
+├── config/             # config.yaml (local, ignored) + config.example.yaml
+├── docs/               # status, changelog, flow, benefits, documentation, tests
+├── data/               # rasters, series, downloads
+└── examples/           # agent outputs (folder required by DataHub)
 ```
 
-## 5. Resolver dudas frecuentes
+## 5. FAQ
 
-- **¿Los 29/30 "datasets en el grafo"?** Total de datasets escritos por el
-  agente (análisis puntuales + tendencias + rasters por fecha).
-- **¿DataHub UI pide login?** quickstart por defecto: `datahub` / `datahub`.
-- **¿El NDVI mostrado es promedio?** Es el raster del día seleccionado en la
-  serie (o el último día); en GEE real sería la mediana de Sentinel-2 del período.
-- **¿Por qué Ollama sale "apagado"?** Docker consume casi toda la RAM (8 GB);
-  por eso el intérprete activo es opencode (0 RAM local). Con Docker apagado,
-  Ollama funciona como intérprete local.
+- **"29/30 datasets in the graph"?** Total datasets written by the agent
+  (point analyses + trends + per-date rasters).
+- **Does the DataHub UI ask for login?** quickstart default: `datahub` / `datahub`.
+- **Is the displayed NDVI an average?** It is the raster of the selected day
+  in the series (or the last day); with real GEE it would be the Sentinel-2
+  period median.
+- **Why is Ollama shown as "off"?** Docker consumes almost all RAM (8 GB);
+  that is why the active interpreter is opencode (0 local RAM). With Docker
+  off, Ollama works as the local interpreter.
 
-Véase también: `docs/FLUJO.md` (pipelines), `docs/PRUEBAS.md` (guion de
-pruebas), `docs/BENEFICIOS.md` (bondades para el pitch), `docs/BITACORA.md`
-(trampas del entorno).
+See also: `docs/FLUJO.md` (pipelines), `docs/PRUEBAS.md` (test script),
+`docs/BENEFICIOS.md` (benefits for the pitch), `docs/BITACORA.md`
+(environment traps).

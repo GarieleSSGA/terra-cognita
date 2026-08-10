@@ -1,116 +1,117 @@
-# 🧪 GUION DE PRUEBAS para la demo — Terra Cognita
+# 🧪 DEMO TEST SCRIPT — Terra Cognita
 
-Pruebas ordenadas (de lo más simple a lo más vistoso) con pasos exactos y
-resultado esperado. Todo desde la raíz del repo, con Docker arriba y el MCP
-server corriendo.
+Ordered tests (from the simplest to the most impressive) with exact
+steps and expected results. All from the repo root, with Docker up and
+the MCP server running.
 
-**Siempre primero:** `Remove-Item Env:CURL_CA_BUNDLE`
+**Always first:** `Remove-Item Env:CURL_CA_BUNDLE`
 
-## 0. Estado del sistema
+## 0. System status
 
 ```powershell
-# 5 contenedores sanos:
+# 5 healthy containers:
 docker ps
-# agentes responden:
+# endpoints respond:
 (Invoke-WebRequest http://localhost:8000/health -UseBasicParsing).StatusCode   # 200 MCP
 (Invoke-WebRequest http://localhost:9002 -UseBasicParsing).StatusCode          # 200 DataHub UI
 ```
 
-**Esperado:** 200 / 200 y 5 contenedores `Up`.
+**Expected:** 200 / 200 and 5 containers `Up`.
 
-## 1. Análisis puntual (snapshot)
+## 1. Point analysis (snapshot)
 
 ```powershell
 .venv\Scripts\python.exe scripts\demo_rapida.py "cual es el NDVI de Lima"
 ```
 
-**Esperado:** plan `via: opencode`, % bajo umbral, estado OK u OBSERVACION,
-y al final un URN catalogado en DataHub.
+**Expected:** plan via `opencode`, % below threshold, state OK or WATCH,
+and a catalogued URN in DataHub at the end.
 
-## 2. Tendencia de 7 días (la estrella)
+## 2. 7-day trend (the star)
 
 ```powershell
 .venv\Scripts\python.exe scripts\demo_temporal.py "dame la vegetacion de Lima de los ultimos 7 dias"
 ```
 
-**Esperado:** tabla de 7 fechas (área bajo umbral 37.7→40.8 %, NDVI medio en
-declive), delta +3.1 pp, "OBSERVACION: deterioro leve", serie catalogada con
-linaje múltiple y **mensaje en tu Telegram** (informe formateado con tabla).
+**Expected:** table of 7 dates (area below threshold 37.7→40.8 %, declining
+mean NDVI), delta +3.1 pp, "WATCH: slight deterioration", series catalogued
+with multiple lineage and **a message on your Telegram** (formatted report
+with table).
 
-## 3. Otra tendencia: 15 días (más deterioro)
+## 3. Another trend: 15 days (more deterioration)
 
 ```powershell
 .venv\Scripts\python.exe scripts\demo_temporal.py "como esta evolucionando la sequia en Lima los ultimos 15 dias"
 ```
 
-**Esperado:** serie de 15 rasters, delta mayor, misma estructura.
+**Expected:** 15-raster series, larger delta, same structure.
 
-## 4. Otro índice: lluvia (alerta)
+## 4. Another index: rainfall (alert)
 
 ```powershell
 .venv\Scripts\python.exe scripts\demo_rapida.py "cuanta lluvia caera en Iquitos"
 ```
 
-**Esperado:** plan `lluvia`, valor máx mm; si supera el umbral (50 mm) →
-**ALERTA por Telegram** (🚨). Es la prueba que dispara alerta real.
+**Expected:** `rainfall` plan, max value in mm; if it exceeds the threshold
+(50 mm) → **Telegram ALERT** (🚨). This is the test that triggers a real alert.
 
-## 5. Humedad de suelo
+## 5. Soil moisture
 
 ```powershell
 .venv\Scripts\python.exe scripts\demo_rapida.py "como esta la humedad del suelo en Lima"
 ```
 
-**Esperado:** plan `humedad`, % de área seca, estado OK/ALERTA.
+**Expected:** `soil moisture` plan, % of dry area, state OK/ALERT.
 
-## 6. Dashboards + mapas (visual, para el video)
+## 6. Dashboard + maps (visual, for the video)
 
 ```powershell
 .venv\Scripts\python.exe -m streamlit run dashboard\app.py   # http://localhost:8501
 ```
 
-1. Ejecuta "dame la vegetacion de Lima de los ultimos 7 dias".
-2. **Esperado:** métricas (análisis/zona/intérprete `opencode`), estado
-   OBSERVACION, tabla de tendencia, **2 gráficos** (área bajo umbral y NDVI),
-   **selectbox de día** (cambia el mapa), mapa folium con leyenda verde/amarillo/rojo,
+1. Run "dame la vegetacion de Lima de los ultimos 7 dias".
+2. **Expected:** metrics (analysis/zone/interpreter `opencode`), WATCH
+   state, trend table, **2 charts** (area below threshold and NDVI),
+   **day selector** (changes the map), folium map with green/yellow/red legend.
 
-## 7. Flujo narrado (para GRABAR el video)
+## 7. Narrated flow (to RECORD the video)
 
 ```powershell
 .venv\Scripts\python.exe scripts\flujo_paso_a_paso.py --presentacion "dame la vegetacion de Lima de los ultimos 7 dias"
 ```
 
-**Esperado:** 8 etapas con pausa de 6 s y guion 🎙 junto a cada una:
-consulta → interpretación → contexto MCP → rasters → cálculo → código GEE →
-write-back → reporte Telegram. Explícale al cámara cada pantalla mientras corre.
+**Expected:** 8 stages with a 6 s pause and 🎙 narration next to each one:
+query → interpretation → MCP context → rasters → computation → GEE code →
+write-back → Telegram report. Explain each screen to the camera while it runs.
 
-## 8. Ver el grafo de DataHub (figura clave del pitch)
+## 8. View the DataHub graph (key pitch figure)
 
-1. Abre **http://localhost:9002** → login `datahub` / `datahub`.
-2. Busca `tendencia` → abre un `analisis_*_tendencia_*`.
-3. Pestaña **Lineage** → el resumen apunta a sus 7 rasters diarios.
-4. Busca `lima` → total 29+ (memoria acumulada del agente).
+1. Open **http://localhost:9002** → login `datahub` / `datahub`.
+2. Search `tendencia` → open an `analisis_*_tendencia_*`.
+3. **Lineage** tab → the summary points to its 7 daily rasters.
+4. Search `lima` → total 29+ (the agent's accumulated memory).
 
-**Esperado:** grafo visible con upstreams; eso demuestra que el agente
-"escribe memoria con linaje" (criterio del hackathon).
+**Expected:** visible graph with upstreams; that proves the agent
+"writes memory with lineage" (hackathon criterion).
 
-## 9. Robustez (vender en el pitch)
+## 9. Robustness (sell it in the pitch)
 
-| Prueba | Cómo | Resultado esperado |
+| Test | How | Expected result |
 |---|---|---|
-| Sin MCP server | Mata el proceso :8000, corre demo | La demo sigue: contexto con aviso, resto OK |
-| Sin Ollama/API | No tener ollama ni clave | Via: opencode o heurística; nunca se cuelga |
-| Write-back caído | Para el GMS, corre demo | Fallback local en `data/resultados_catalogados/` |
+| No MCP server | Kill the :8000 process, run the demo | The demo continues: context with notice, rest OK |
+| No Ollama/API | Don't have ollama nor key | Via: opencode or heuristic; never hangs |
+| Write-back down | Stop GMS, run the demo | Local fallback in `data/resultados_catalogados/` |
 
-## 10. Telegram (reportes)
+## 10. Telegram (reports)
 
-1. Consulta con tendencia → llega informe formateado (tabla día a día).
-2. Consulta de lluvia con valor alto → alerta 🚨.
-3. O manual: `scripts` + botón "Enviar mensaje de prueba" en el dashboard.
+1. Trend query → formatted report arrives (day-by-day table).
+2. High-value rainfall query → 🚨 alert.
+3. Or manually: `scripts` + "Send test message" button on the dashboard.
 
-**Esperado:** mensajes con texto legible (sin JSON ni código crudo).
+**Expected:** messages with readable text (no raw JSON or code).
 
 ---
 
-**Consejo para el video:** graba en orden 6 → 7 → 8 → 4: dashboard en acción,
-flujo narrado (arquitectura), grafo de DataHub (memoria con linaje) y alerta
-Telegram (cierre del ciclo).
+**Video tip:** record in order 6 → 7 → 8 → 4: dashboard in action,
+narrated flow (architecture), DataHub graph (memory with lineage) and
+Telegram alert (loop closure).

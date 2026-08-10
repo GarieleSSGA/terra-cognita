@@ -1,72 +1,71 @@
-# 🌎 BENEFICIOS de Terra Cognita
+# 🌎 Terra Cognita — BENEFITS
 
-Sistema agéntico geoespacial: consulta en lenguaje natural → análisis
-espacial con IA → memoria con linaje (DataHub) → alertas (Telegram).
-Pensado para los criterios del hackathon: innovación, impacto social,
-integración real y demostración en vivo.
+Agentic geospatial system: natural-language query → AI spatial analysis →
+memory with lineage (DataHub) → alerts (Telegram). Designed for the
+hackathon criteria: innovation, social impact, real integration and a
+live demo.
 
-## 1. IA capaz con CUALQUIER presupuesto de RAM
+## 1. Capable AI with ANY RAM budget
 
-- **Cadena de intérpretes en cascada**: `opencode (IA potente) → Ollama
-  (modelo local privado) → API LLM → heurística`. El sistema NUNCA se
-  cuelga: si el intérprete tarda, el siguiente toma el control y la demo
-  termina siempre.
-- En una máquina con 8 GB de RAM (como la de la demo, con Docker arriba
-  consumiendo casi todo), el agente SIGUE siendo inteligente: usa opencode
-  (~0 RAM local) — la demostración de que "puedes tener un geo-agente
-  potente sin una GPU".
-- En una máquina potente (p. ej. core i7 con 16+ GB), se activa `Ollama` y
-  todo el razonamiento es 100 % local y privado.
+- **Cascading interpreter chain**: `opencode (powerful AI) → Ollama
+  (private local model) → LLM API → heuristic`. The system NEVER hangs:
+  if an interpreter is slow, the next one takes over and the demo always
+  finishes.
+- On an 8 GB RAM machine (like the demo one, with Docker eating almost
+  everything), the agent is STILL smart: it uses opencode (~0 local RAM) —
+  proof that "you can have a powerful geo-agent without a GPU".
+- On a powerful machine (e.g. core i7 with 16+ GB), `Ollama` activates and
+  all reasoning is 100 % local and private.
 
-## 2. Un agente que NO alucina (memoria real con DataHub)
+## 2. An agent that does NOT hallucinate (real memory with DataHub)
 
-- Antes de responder, el agente **consulta DataHub vía MCP**: qué datasets
-  existen, qué columnas tienen y de dónde vienen (linaje).
-- El razonamiento arranca del **grafo real**, no de "lo que cree el modelo".
-- Cada análisis **se escribe de vuelta a DataHub con linaje**: un dataset
-  por fecha + resumen con `upstreamLineage`. Los números del reporte se
-  pueden rastrear hasta su raster fuente — auditoría completa.
+- Before answering, the agent **queries DataHub via MCP**: which datasets
+  exist, which columns they have and where they come from (lineage).
+- Reasoning starts from the **real graph**, not from "what the model thinks".
+- Every analysis **is written back to DataHub with lineage**: one dataset
+  per date + summary with `upstreamLineage`. Report numbers can be traced
+  to their source raster — full audit trail.
 
-## 3. De la consulta al dato real (Google Earth Engine)
+## 3. From query to real data (Google Earth Engine)
 
-- El agente **genera código JavaScript de GEE ad-hoc** para cada consulta:
-  diferente por análisis (NDVI, lluvia CHIRPS, humedad SMAP, NDWI, LST
-  MODIS, EVI), zona y fechas.
-- Zona pequeña (~2 km) por defecto: descargas rápidas y dentro de la cuota
-  gratuita. Con `getDownloadURL` el código descarga el raster y el pipeline
-  lo procesa igual (sintéticos y reales usan el mismo análisis).
+- The agent **generates ad-hoc GEE JavaScript code** for each query:
+  different per analysis (NDVI, CHIRPS rainfall, SMAP soil moisture, NDWI,
+  MODIS LST, EVI), zone and dates.
+- Small zone (~2 km) by default: fast downloads within the free quota.
+  With `getDownloadURL` the code downloads the raster and the pipeline
+  processes it the same way (synthetic and real share the same analysis).
 
-## 4. Alerta temprana con decisión del agente
+## 4. Early warning with agent decision
 
-- El agente **razona el resultado** y decide qué avisar: ALERTA (riesgo),
-  OBSERVACIÓN o OK — y opcionalmente reporta cada consulta a Telegram
-  (`reporte_siempre: true`).
-- No es un botón fijo: es la misma IA que entendió la consulta la que
-  decide el mensaje, cerrando el círculo acción → aviso.
+- The agent **reasons about the result** and decides what to report:
+  ALERT (risk), WATCH or OK — and optionally reports every query to
+  Telegram (`reporte_siempre: true`).
+- Not a fixed button: the same AI that understood the query decides the
+  message, closing the action → notification loop.
 
-## 5. Visualización completa
+## 5. Complete visualization
 
-- **Dashboard Streamlit**: mapa NDVI con leyenda + chat + tendencia por día
-  (tabla y conclusión) + estado del stack en vivo + DataHub UI enlazada.
-- **`scripts/flujo_paso_a_paso.py`**: muestra las 8 etapas internas con
-  prints reales — perfecto para explicar la arquitectura al jurado.
+- **Streamlit dashboard**: NDVI map with legend + chat + daily trend
+  (table and conclusion) + live stack status + linked DataHub UI.
+- **`scripts/flujo_paso_a_paso.py`**: shows all 8 internal stages with
+  real prints — perfect to explain the architecture to the jury.
 
-## 6. Reproducibilidad y robustez
+## 6. Reproducibility and robustness
 
-- Datos sintéticos de demostración → demo reproducible sin depender de
-  APIs externas que fallan o demoran; el código para datos reales (GEE)
-  cambia en una línea (`fuente_default: gee`).
-- Fallbacks en cascada: MCP caído → continúa con contexto local;
-  write-back fallido → respaldo local sin romper el flujo.
-- Bitácora de errores del entorno (`docs/BITACORA.md`) que documenta cada
-  trampa y su arreglo.
+- Synthetic demo data → reproducible demo without depending on external
+  APIs that fail or lag; the code for real data (GEE) changes in one line
+  (`source_default: gee`).
+- Cascading fallbacks: MCP down → continues with local context;
+  failed write-back → local fallback without breaking the flow.
+- Environment error log (`docs/BITACORA.md`) documenting every trap and
+  its fix.
 
-## Mapa (hipótesis de impacto)
+## Impact map (hypothesis)
 
-| Problema | Terra Cognita |
-|----------|---------------|
-| Monitoreo lento y manual | Consulta en lenguaje natural, respuesta en minutos |
-| Ojo no experto en teledetección | El agente traduce a índices y umbrales |
-| Resultados sin trazabilidad | Todo queda en DataHub con linaje |
-| Alertas genéricas | Mensaje razonado por el agente según la severidad |
-| Costo de infraestructura | IA local / opencode en máquinas comunes |
+| Problem | Terra Cognita |
+|---------|---------------|
+| Slow, manual monitoring | Natural-language query, answer in minutes |
+| Non-expert remote-sensing eye | The agent translates to indices and thresholds |
+| Results without traceability | Everything stays in DataHub with lineage |
+| Generic alerts | Message reasoned by the agent by severity |
+| Infrastructure cost | Local AI / opencode on common machines |
