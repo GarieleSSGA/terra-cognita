@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terra Cognita — Demo Interactiva | Agente Geoespacial + DataHub</title>
+<meta name="description" content="Simulación interactiva del agente geoespacial Terra Cognita: pregunta en lenguaje natural, pipeline LLM + MCP + DataHub + GEE, write-back con linaje, informe y alertas Telegram.">
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#111624; --panel2:#151b2b; --line:#232c40;
+    --txt:#dbe4f0; --dim:#8b98ad; --acc:#22d3a9; --acc2:#4f8cff; --warn:#f5b64e; --alert:#ff6b6b;
+    --mono:'JetBrains Mono','Cascadia Code',Consolas,monospace;
+    --sans:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:var(--sans);overflow-x:hidden}
+  ::selection{background:rgba(34,211,169,.25)}
+  header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(90deg,rgba(34,211,169,.07),transparent 40%);flex-wrap:wrap}
+  .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#22d3a9,#4f8cff);
+    display:grid;place-items:center;font-weight:800;color:#04121c;font-family:var(--mono)}
+  header h1{font-size:18px;letter-spacing:.5px}
+  header h1 span{color:var(--acc)}
+  header .sub{font-size:12px;color:var(--dim);font-family:var(--mono);margin-top:2px}
+  .pill{font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel);color:var(--dim);font-family:var(--mono);text-decoration:none;white-space:nowrap}
+  .pill:hover{border-color:var(--acc);color:var(--acc)}
+  .pill.green{border-color:rgba(34,211,169,.5);color:var(--acc)}
+  main{padding:18px 22px;display:grid;gap:14px;grid-template-columns:380px 1fr;max-width:1400px;margin:0 auto}
+  @media(max-width:1100px){main{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .panel>h3{font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);
+    padding:10px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono)}
+  .panel>h3 .dot{width:8px;height:8px;border-radius:50%;background:#3a4560;display:inline-block;margin-left:8px}
+  .panel>h3 .dot.on{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+  .panel>h3 .dot.err{background:var(--alert);box-shadow:0 0 8px var(--alert)}
+  .query{background:var(--panel2);margin:12px;padding:12px 14px;border-radius:10px;border:1px solid var(--line);
+    font-size:13.5px;line-height:1.55;position:relative}
+  .query b{color:var(--acc2)}
+  .caret{display:inline-block;width:8px;height:15px;background:var(--acc);vertical-align:-2px;
+    animation:cz 1s steps(2) infinite}
+  @keyframes cz{50%{opacity:0}}
+  .console{height:340px;overflow-y:auto;padding:10px 14px;font-family:var(--mono);font-size:12px;line-height:1.65}
+  .console::-webkit-scrollbar{width:8px}
+  .console::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+  .ln{white-space:pre-wrap;word-break:break-word;margin:1px 0}
+  .ln .t{color:#5c6b84;margin-right:8px}
+  .ln.info{color:var(--txt)} .ln.ok{color:var(--acc)} .ln.warn{color:var(--warn)} .ln.err{color:var(--alert)}
+  .ln.sys{color:var(--acc2)}
+  .controls{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);font-family:var(--sans);
+    font-size:12.5px;padding:7px 14px;border-radius:8px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--acc);color:var(--acc)}
+  .btn.primary{background:linear-gradient(135deg,#22d3a9,#1fa08a);color:#04121c;font-weight:700;border:none}
+  .btn.primary:hover{filter:brightness(1.1);color:#04121c}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  select.btn{appearance:auto}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+  .stepper{display:flex;flex-direction:column;gap:0;margin:10px 0}
+  .step{display:flex;gap:12px;padding:8px 14px;align-items:flex-start;border-left:2px solid var(--line);margin-left:16px;position:relative}
+  .step .n{position:absolute;left:-24px;top:8px;width:20px;height:20px;border-radius:50%;background:var(--panel2);
+    border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-family:var(--mono)}
+  .step .n.done{background:var(--acc);border-color:var(--acc);color:#04121c}
+  .step .n.run{background:var(--warn);border-color:var(--warn);color:#04121c;animation:pulse 1s infinite}
+  @keyframes pulse{50%{box-shadow:0 0 0 5px rgba(245,182,78,.2)}}
+  .step .tt{font-size:13px;font-weight:600}
+  .step .dd{font-size:11.5px;color:var(--dim);line-height:1.5}
+  .step.done{border-left-color:var(--acc)}
+  .step.run{border-left-color:var(--warn)}
+  .kv{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;padding:6px 14px;border-bottom:1px solid rgba(35,44,64,.5);font-family:var(--mono)}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--dim)} .kv .v{color:var(--txt);text-align:right;word-break:break-all}
+  .kv .v b{color:var(--acc)}
+  table.report{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+  table.report th{color:var(--dim);font-weight:600;text-align:left;padding:6px 10px;border-bottom:1px solid var(--line)}
+  table.report td{padding:5px 10px;border-bottom:1px solid rgba(35,44,64,.5)}
+  .tag{font-size:10px;padding:2px 7px;border-radius:4px;font-family:var(--mono)}
+  .tag.ok{background:rgba(34,211,169,.15);color:var(--acc)}
+  .tag.warn{background:rgba(245,182,78,.15);color:var(--warn)}
+  .tag.alert{background:rgba(255,107,107,.15);color:var(--alert)}
+  #mapSvg{width:100%;display:block;background:
+    radial-gradient(ellipse at 30% 20%,#13202c,#0c1219)}
+  .legend{display:flex;align-items:center;gap:6px;padding:8px 14px;font-size:11px;font-family:var(--mono);color:var(--dim)}
+  .legend .bar{height:8px;flex:1;border-radius:4px;background:linear-gradient(90deg,#7a5c3e,#c9a15c,#8ab856,#2f9e6e,#145a3f)}
+  .chartWrap{position:relative;height:200px}
+  #chartCv{width:100%;height:100%;display:block}
+  #chartTitle{position:absolute;top:8px;left:14px;font-size:11px;color:var(--dim);font-family:var(--mono)}
+  .tg{font-family:var(--mono);font-size:12px;margin:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .tg .tgHead{background:#1f2a41;color:#cfe3ff;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:12px}
+  .tg .tgBody{padding:6px 0}
+  .tg .bot{display:flex;gap:8px;padding:8px 12px}
+  .tg .bubble{background:var(--panel2);padding:9px 11px;border-radius:9px;border-top-left-radius:2px;line-height:1.55}
+  .lineage{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;font-family:var(--mono)}
+  .lgNode{font-size:11px;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);text-align:center;line-height:1.4}
+  .lgNode.source{border-color:#2a3b5e}
+  .lgNode.trend{border-color:var(--acc);color:var(--acc)}
+  .lgNode.out{border-color:var(--acc2);color:var(--acc2)}
+  .lgNode .urn{display:block;font-size:9.5px;color:var(--dim)}
+  .lgVert{width:1px;height:14px;background:var(--line)}
+  .lgWeb{display:flex;gap:4px;justify-content:center;width:100%}
+  .lgWeb span{width:1px;height:26px;background:linear-gradient(180deg,var(--acc),var(--line));display:block}
+  .formula{background:var(--panel2);border:1px solid var(--line);border-radius:10px;margin:12px;
+    padding:14px;font-family:var(--mono);font-size:14px;text-align:center;color:var(--txt);letter-spacing:.3px}
+  .formula .frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 4px}
+  .formula .frac span{border-bottom:1px solid var(--txt);padding:0 8px 2px}
+  .formula .frac i{padding:2px 8px 0;font-style:normal;font-size:11px;color:var(--dim)}
+  .formula .sum{font-size:inherit}
+  .footer{padding:16px 22px 30px;color:var(--dim);font-size:12px;text-align:center;font-family:var(--mono)}
+  .uk{display:inline-block;margin:0 1px;min-width:24px}
+  .uk b{color:var(--txt);font-weight:600}
+  .uk i{display:block;font-style:normal;font-size:9px;color:var(--dim)}
+  @media print{.no-print{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">TC</div>
+  <div>
+    <h1>Terra <span>Cognita</span> — Demo Interactiva</h1>
+    <div class="sub">agente geoespacial · DataHub MCP · Earth Engine · Telegram</div>
+  </div>
+  <a class="pill green" href="https://github.com/GarieleSSGA/terra-cognita" target="_blank" rel="noopener">&#128279; github.com/GarieleSSGA/terra-cognita</a>
+  <span class="pill">DataHub Community Hackathon — Agents that do real work</span>
+</header>
+
+<main>
+  <section class="panel" style="grid-row:span 2">
+    <h3>Consulta <span id="qDot" class="dot"></span></h3>
+    <div class="query" id="queryBox">
+      <span id="queryText"></span><span class="caret" id="caret" style="display:none"></span>
+    </div>
+
+    <h3>Pipeline del agente <span id="stDot" class="dot"></span></h3>
+    <div class="stepper" id="stepper">
+      <div class="step" data-s="0"><span class="n" id="n0">1</span>
+        <div><div class="tt">Interpretar consulta</div>
+        <div class="dd">LLM &#8594; plan JSON <font face="monospace">{analisis, zona, dias}</font></div></div></div>
+      <div class="step" data-s="1"><span class="n" id="n1">2</span>
+        <div><div class="tt">Buscar contexto en DataHub (MCP)</div>
+        <div class="dd">search + schema + lineage de NDVI</div></div></div>
+      <div class="step" data-s="2"><span class="n" id="n2">3</span>
+        <div><div class="tt">Obtener datos (sintéticos &#8596; GEE)</div>
+        <div class="dd">Sentinel-2 por bbox ~2 km, auto-código</div></div></div>
+      <div class="step" data-s="3"><span class="n" id="n3">4</span>
+        <div><div class="tt">Calcular índices y tendencia</div>
+        <div class="dd">NDVI, % bajo umbral, &#916;, estado</div></div></div>
+      <div class="step" data-s="4"><span class="n" id="n4">5</span>
+        <div><div class="tt">Write-back con linaje</div>
+        <div class="dd">7 datasets + tendencia, upstreamLineage</div></div></div>
+      <div class="step" data-s="5"><span class="n" id="n5">6</span>
+        <div><div class="tt">Informe + alerta Telegram</div>
+        <div class="dd">reporte formateado + mapa + dashboard</div></div></div>
+    </div>
+
+    <h3>Consola <span id="cDot" class="dot"></span></h3>
+    <div class="console" id="console"></div>
+
+    <h3>Detalles del contexto (DataHub MCP)</h3>
+    <div class="kv"><span class="k">search: db=ndvi, plataforma=sentinel2</span><span class="v"><b>29</b> datasets</span></div>
+    <div class="kv"><span class="k">serie detectada (Lima)</span><span class="v" id="kvSerie">—</span></div>
+    <div class="kv"><span class="k">schema: banda</span><span class="v">ndvi (float32)</span></div>
+    <div class="kv"><span class="k">lineage registrado</span><span class="v" id="kvLineage">—</span></div>
+
+    <div class="controls no-print">
+      <button class="btn primary" id="btnRun">&#9654; Ejecutar demo</button>
+      <button class="btn" id="btnPause">&#10074;&#10074; Pausa</button>
+      <button class="btn" id="btnReset">&#8634; Reiniciar</button>
+      <select class="btn" id="selSpeed">
+        <option value="1">1x</option>
+        <option value="1.6" selected>1.6x</option>
+        <option value="2.5">2.5x</option>
+        <option value="4">4x</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="grid2">
+    <section class="panel">
+      <h3>Mapa NDVI — Lima <span id="mapDot" class="dot"></span> <span id="dayLabel" style="color:var(--dim)">día 7/7</span></h3>
+      <svg id="mapSvg" viewBox="0 0 400 280" role="img" aria-label="Mapa de calor NDVI de Lima"></svg>
+      <div class="legend"><span>NDVI bajo</span><div class="bar"></div><span>NDVI sano</span></div>
+    </section>
+
+    <section class="panel">
+      <h3>Tendencia de la serie <span id="trDot" class="dot"></span></h3>
+      <div class="chartWrap"><div id="chartTitle">% área bajo umbral (&#964;)</div><canvas id="chartCv"></canvas></div>
+      <div class="kv"><span class="k">día 1 &#8594; día 7</span><span class="v" id="kvDelta">—</span></div>
+      <div class="kv"><span class="k">estado</span><span class="v" id="kvState">—</span></div>
+    </section>
+  </section>
+
+  <section class="grid2">
+    <section class="panel">
+      <h3>Matemática del análisis</h3>
+      <div class="formula">
+        NDVI = <span class="frac"><span>NIR &#8722; RED</span><i>numerador</i></span>
+        &nbsp;/&nbsp; <span class="frac"><span>NIR + RED</span><i>denominador</i></span>
+      </div>
+      <div class="kv"><span class="k">P<sub>t</sub> = fracción degradada (NDVI &lt; &#964;)</span><span class="v" id="kvP">—</span></div>
+      <div class="kv"><span class="k">&#916; = P<sub>t0</sub> &#8722; P<sub>tN</sub> (puntos %)</span><span class="v" id="kvD">—</span></div>
+      <div class="kv"><span class="k">regla</span><span class="v" id="kvRule">ALERTA si P&#8805;50 ó &#916;&gt;+5 · OBSERVACIÓN si &#916;&gt;0</span></div>
+    </section>
+
+    <section class="panel">
+      <h3>Linaje en DataHub (write-back) <span id="lgDot" class="dot"></span></h3>
+      <div class="lineage" id="lineage">
+        <div class="lgNode source">raster_ndvi_lima_2026-08-04<span class="urn">urn:datahub:dataset:terra.raster_ndvi_lima</span></div>
+        <div class="lgVert"></div>
+        <div class="lgNode source">raster_ndvi_lima_2026-08-05<span class="urn">urn:datahub:dataset:terra.raster_ndvi_lima</span></div>
+        <div class="lgVert"></div>
+        <div class="lgNode source">&#8230; × 5 días más<span class="urn">serie temporal 7 días</span></div>
+        <div class="lgVert"></div>
+        <div class="lgNode trend" id="lgTrend">analisis_ndvi_tendencia_2026-08-10<span class="urn">urn:datahub:dataset:terra.analisis_ndvi_tendencia</span></div>
+        <div class="lgVert"></div>
+        <div class="lgNode out">informe_ndvi_2026-08-10<span class="urn">visualización + Telegram</span></div>
+      </div>
+    </section>
+  </section>
+
+  <section class="panel">
+    <h3>Alerta Telegram simulada — @ERRADICADORBOT <span id="tgDot" class="dot"></span></h3>
+    <div class="tg" id="tgBox">
+      <div class="tgHead">&#128225; Terra Cognita — Reporte diario</div>
+      <div class="tgBody">
+        <div class="bot"><div class="bubble" id="tgBubble">
+&#128276; <b>Reporte del agente</b> — esperando ejecución…<br>
+Ventana: 2026-08-04 &#8594; 2026-08-10 (7 días) &#9203;
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    Demo simulada autocontenida (HTML/CSS/JS) · resultados idénticos a la ejecución real ·
+    <a href="https://github.com/GarieleSSGA/terra-cognita" style="color:var(--acc)">código fuente y ejecución real</a> ·
+    Terra Cognita, DataHub Community Hackathon 2026
+  </div>
+</main>
+
+<script>
+/* ============ datos de la demo (idénticos a la ejecución real) ============ */
+const DIAS=['2026-08-04','2026-08-05','2026-08-06','2026-08-07','2026-08-08','2026-08-09','2026-08-10'];
+const PCT=[37.7,38.1,39.0,38.6,39.9,40.2,40.8];           // % bajo umbral
+const MEDIA=[0.224,0.219,0.211,0.215,0.202,0.198,0.191];  // NDVI medio
+const TAU=0.21, T0=PCT[0], TN=PCT[PCT.length-1], DELTA=+(TN-T0).toFixed(1);
+const ESTADO = PCT[6]>=50||DELTA>5 ? 'ALERTA' : (DELTA>0 ? 'OBSERVACIÓN' : 'OK');
+
+/* ============ helpers ============ */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const c$=$('console'); let running=false, paused=false, resume=null, speed=1;
+const logs=[];
+function log(cls,msg,ts){
+  logs.push({cls,msg});
+  const d=document.createElement('div'); d.className='ln '+cls;
+  d.innerHTML='<span class="t">'+ts+'</span>'+msg;
+  c$.appendChild(d); c$.scrollTop=c$.scrollHeight;
+}
+const TS=()=>new Date().toTimeString().slice(0,8);
+const t0=performance.now();
+function logT(cls,msg){log(cls,msg,TS());}
+async function waitWhilePaused(){ while(paused && running){ await sleep(120);} }
+async function wait(dt){ const n=dt/speed; const s0=performance.now(); while(performance.now()-s0<n){ await sleep(30); if(paused){ await waitWhilePaused(); } } }
+
+/* ============ mapa (SVG sintético determinista) ============ */
+const GRID=20, CELLS={};
+(function(){
+  let s=42; const rnd=()=>{ s=(s*16807)%2147483647; return s/2147483647; };
+  for(let d=0;d<7;d++){ CELLS[d]=[]; for(let y=0;y<GRID;y++){ CELLS[d][y]=[]; for(let x=0;x<GRID;x++){
+    const base=0.15+0.35*rnd() + (d*0.02)*((x+y)/40-0.5);
+    CELLS[d][y][x]=Math.max(0.02,Math.min(0.85,base));
+  }}}
+})();
+const ndviColor=v=>{
+  const stops=[[0,'#7a5c3e'],[0.25,'#c9a15c'],[0.4,'#8ab856'],[0.6,'#2f9e6e'],[1,'#145a3f']];
+  let i=0; while(i<stops.length-1 && v>stops[i+1][0])i++;
+  const [x0,c0]=stops[i],[x1,c1]=stops[Math.min(i+1,stops.length-1)];
+  const t=Math.min(1,Math.max(0,(v-x0)/(x1-x0||1)));
+  const p=h=>parseInt(h.slice(1,3),16)+Math.round(t*(parseInt(c1.slice(1,3),16)-parseInt(h.slice(1,3),16)));
+  return 'rgb('+p(c0)+','+p(c0.slice(2,4))+','+p(c0.slice(4,6))+')';
+};
+function drawMap(d){
+  const svg=$('mapSvg'); const W=400,H=280, cx=W/2, cy=H/2, cw=W*0.72, ch=H*0.78;
+  let out='';
+  for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+    const v=CELLS[d][y][x];
+    out+='<rect x="'+(cx-cw/2+x*cw/GRID)+'" y="'+(cy-ch/2+y*ch/GRID)+'" width="'+(cw/GRID+0.6)+'" height="'+(ch/GRID+0.6)+'" fill="'+ndviColor(v)+'" opacity="0.92"/>';
+  }
+  out+='<circle cx="'+(cx+cw*0.24)+'" cy="'+(cy-ch*0.28)+'" r="26" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.6" stroke-dasharray="3 4"/>';
+  out+='<text x="'+(cx+cw*0.24)+'" y="'+(cy-ch*0.28-8)+'" fill="#fff" font-size="9" opacity="0.8" font-family="monospace" text-anchor="middle">LIMA</text>';
+  out+='<text x="'+(cx-cw/2+6)+'" y="'+(cy-ch/2-6)+'" fill="#ffffff" opacity="0.55" font-size="8.5" font-family="monospace">bbox: -77.060,-12.070 &rarr; -77.040,-12.050 (~2 km)</text>';
+  const lab=['día 1','día 2','día 3','día 4','día 5','día 6','día 7'];
+  out+='<text x="'+(cx+cw/2+8)+'" y="'+(cy)+'" fill="#ffffff" opacity="0.5" font-size="9" font-family="monospace">'+lab[d]+' · '+DIAS[d]+'</text>';
+  $('dayLabel').textContent='día '+(d+1)+'/7 · '+DIAS[d];
+  svg.innerHTML=out;
+}
+
+/* ============ gráfico de tendencia (canvas) ============ */
+function drawChart(d){
+  const cv=$('chartCv'), ctx=cv.getContext('2d');
+  const W=cv.clientWidth, H=cv.clientHeight;
+  cv.width=W*devicePixelRatio; cv.height=H*devicePixelRatio; ctx.scale(devicePixelRatio,devicePixelRatio);
+  ctx.clearRect(0,0,W,H);
+  const pad={l:34,r:10,t:16,b:22}, iw=W-pad.l-pad.r, ih=H-pad.t-pad.b;
+  const mn=34,mx=43;
+  const X=i=>pad.l+(i/(PCT.length-1))*iw, Y=v=>pad.t+ih-(v-mn)/(mx-mn)*ih;
+  ctx.strokeStyle='#232c40';ctx.fillStyle='#5c6b84';ctx.font='9.5px monospace';ctx.lineWidth=1;
+  for(let g=mn;g<=mx;g+=3){ctx.beginPath();ctx.moveTo(pad.l,Y(g));ctx.lineTo(pad.l+iw,Y(g));ctx.stroke();ctx.fillText(g+'%',2,Y(g)+3);}
+  ctx.beginPath();ctx.moveTo(pad.l,Y(mn));ctx.lineTo(pad.l+iw,Y(mn));ctx.stroke();
+  const n=Math.min(d,PCT.length-1);
+  const grad=ctx.createLinearGradient(0,0,0,H);grad.addColorStop(0,'rgba(245,182,78,.25)');grad.addColorStop(1,'rgba(245,182,78,0)');
+  ctx.beginPath();ctx.moveTo(X(0),Y(PCT[0]));for(let i=1;i<=n;i++)ctx.lineTo(X(i),Y(PCT[i]));
+  ctx.lineTo(X(n),Y(mn));ctx.lineTo(X(0),Y(mn));ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();ctx.moveTo(X(0),Y(PCT[0]));for(let i=1;i<=n;i++)ctx.lineTo(X(i),Y(PCT[i]));
+  ctx.strokeStyle='#f5b64e';ctx.lineWidth=2;ctx.stroke();
+  for(let i=0;i<=n;i++){ctx.beginPath();ctx.arc(X(i),Y(PCT[i]),3,0,7);ctx.fillStyle='#f5b64e';ctx.fill();}
+  ctx.fillStyle='#8b98ad';
+  for(let i=0;i<PCT.length;i++)ctx.fillText((+DIAS[i].slice(5,7))+'-'+DIAS[i].slice(8,10),X(i)-13,H-pad.t+8);
+  ctx.fillText('NDVI medio (eje 2): '+(MEDIA[n].toFixed(3)),pad.l,H-2);
+  ctx.fillStyle='#22d3a9';ctx.font='9px monospace';
+  for(let i=0;i<=n;i++){const x=X(i), y=Y(PCT[i])-14; ctx.beginPath();ctx.moveTo(x-12,y+4);ctx.lineTo(x+12,y+4);ctx.strokeStyle='#22d3a9';ctx.stroke();}
+  if(n===PCT.length-1){
+    ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,107,107,.7)';
+    ctx.beginPath();ctx.moveTo(pad.l,Y(50));ctx.lineTo(pad.l+iw,Y(50));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,107,107,.9)';ctx.fillText('umbral P=50% (ALERTA)',pad.l+4,Y(50)-4);
+  }
+}
+function resizeChart(){ drawChart(lastDay); }
+let lastDay=0; window.addEventListener('resize',resizeChart);
+
+/* ============ linaje animado ============ */
+function setNode(cls){}
+
+/* ============ escenario principal ============ */
+function resetUI(){
+  logs.length=0; c$.innerHTML='';
+  [0,1,2,3,4,5].forEach(i=>{$('n'+i).className='n';});
+  $('qDot').className=$('stDot').className=$('cDot').className=$('mapDot').className=$('trDot').className=$('lgDot').className=$('tgDot').className='dot';
+  $('kvSerie').textContent='—';$('kvLineage').textContent='—';
+  $('kvDelta').textContent='—';$('kvState').textContent='—';$('kvP').textContent='—';$('kvD').textContent='—';
+  $('dayLabel').textContent='día 1/7';
+  drawMap(0); drawChart(0);
+  $('caret').style.display='inline-block'; $('queryText').textContent='';
+  paused=false; running=false;
+  logT('sys','Sistema listo. Stack: DataHub (5 contenedores) · MCP :8000 · GMS :8080 · Ollama en reserva.');
+  logT('sys','Escribe una consulta geoespacial… por ejemplo:');
+  logT('info','  "¿Cómo está evolucionando la sequía en Lima esta semana?"');
+}
+
+const STEP_NAME=['Interpretar consulta','Buscar contexto en DataHub (MCP)','Obtener datos (sintéticos ↔ GEE)','Calcular índices y tendencia','Write-back con linaje','Informe + alerta Telegram'];
+
+async function runDemo(){
+  if(running) return; running=true; paused=false;
+  $('btnRun').disabled=true; $('btnPause').disabled=false;
+  const step=i=>{$('stDot').className='dot on'; [0,1,2,3,4,5].forEach(k=>{const d=document.querySelectorAll('.step')[k]; if(k<i){d.classList.remove('run');d.classList.add('done');$('n'+k).className='n done';} else if(k===i){d.classList.add('run');d.classList.remove('done');$('n'+k).className='n run';} else {d.classList.remove('run','done');$('n'+k).className='n';}});};
+
+  /* 0 — consulta */
+  step(0); $('qDot').className='dot on';
+  const q='“¿Cómo está evolucionando la sequía en Lima esta semana?”';
+  const qq=$('queryText'); qq.textContent='';
+  for(let i=0;i<q.length;i++){qq.textContent=q.slice(0,i+1); await wait(26);}
+  await wait(300);
+  logT('sys','opencode ─ intérprete activo (cascada: opencode → Ollama → API → heurística)');
+  logT('info','LLM generó el plan en JSON:');
+  logT('info','  { "analisis": "ndvi", "zona": "lima", "dias": 7, "umbral": 0.21, "tabla_estados": true }');
+  await wait(900); $('qDot').className='dot';
+
+  /* 1 — DataHub MCP */
+  step(1); $('cDot').className='dot on';
+  logT('sys','Consultando DataHub vía MCP server (HTTP :8000)…');
+  logT('info','search(dataset: "*ndvi*", plataforma: sentinel2) → <b>29 resultados</b>');
+  await wait(650);
+  logT('info','serie temporal detectada: <b>7 raster_ndvi_lima</b> (2026-08-04 → 2026-08-10)');
+  $('kvSerie').innerHTML='<b>7 rasters</b> · 2026-08-04 → 10';
+  await wait(650);
+  logT('info','schema: banda <b>ndvi</b> (float32) · tipo <b>gerencia de análisis</b> · provincia Lima');
+  $('cDot').className='dot';
+  await wait(700);
+
+  /* 2 — datos */
+  step(2); $('mapDot').className='dot on';
+  logT('sys','Fuente de datos: <b>sintéticos verificados</b> (GEE real a un switch: gee.fuente_default=gee)');
+  logT('info','bbox Lima <b>-77.060,-12.070 → -77.040,-12.050</b> (~2 km²) · resolución 10 m Sentinel-2');
+  $('mapDot').className='dot';
+  await wait(900);
+
+  /* 3 — cálculo */
+  step(3); $('trDot').className='dot on';
+  logT('sys','Calculando NDVI = (NIR−RED)/(NIR+RED) por píxel y por día…');
+  for(let d=0; d<7; d++){
+    drawMap(d); drawChart(d);
+    logT('info','  día '+DIAS[d]+': P<sub>t</sub> = <b>'+PCT[d].toFixed(1)+'%</b> · NDVI medio '+MEDIA[d].toFixed(3)+' · degradado '+(MEDIA[d]<TAU?'SÍ':'no'));
+    await wait(520);
+  }
+  logT('info','Δ = P<sub>t0</sub> − P<sub>tN</sub> = <b>'+DELTA.toFixed(1)+' puntos %</b> (37.7 → 40.8)');
+  logT(ESTADO==='ALERTA'?'err':ESTADO==='OBSERVACIÓN'?'warn':'ok','Estado: <b>'+ESTADO+'</b> '+((ESTADO==='ALERTA')?'(P≥50 o Δ>+5)':'(Δ>0: deterioro leve)')); 
+  $('kvDelta').innerHTML='<b>+'+DELTA.toFixed(1)+' pp</b> (37.7% → 40.8%)';
+  $('kvState').innerHTML='<b style="color:'+(ESTADO==='ALERTA'?'var(--alert)':'var(--warn)')+'">'+ESTADO+'</b>';
+  $('kvP').innerHTML='P<sub>7</sub> = <b>40.8%</b> · umbral τ = '+TAU;
+  $('kvD').innerHTML='<b>+'+DELTA.toFixed(1)+' pp</b> · regla: ALERTA si P≥50 ó Δ&gt;+5';
+  $('trDot').className='dot';
+  await wait(800);
+
+  /* 4 — write-back */
+  step(4); $('lgDot').className='dot on';
+  logT('sys','Write-back con linaje (datahub_write)…');
+  for(let d=0;d<7;d++){ logT('ok','  + raster_ndvi_lima_'+DIAS[d]+' ✓'); await wait(110); }
+  logT('ok','  + analisis_ndvi_tendencia_2026-08-10 ✓ (upstreamLineage: 7 rasters)');
+  logT('info','Grafo DataHub actualizado: <b>29+ datasets · 5 tendencias · base 3</b>');
+  $('kvLineage').innerHTML='<b>7 fuentes → 1 tendencia</b> · upstreamLineage OK';
+  $('lgDot').className='dot';
+  await wait(800);
+
+  /* 5 — informe + Telegram */
+  step(5); $('tgDot').className='dot on';
+  logT('sys','Generando informe y enviando alerta Telegram (@ERRADICADORBOT)…');
+  logT('ok','📨 Mensaje enviado al chat 7245893327 (reporte + diagnóstico)');
+  $('tgDot').className='dot';
+  renderTG();
+  $('stDot').className='dot on'; $('cDot').className='dot on';
+  logT('ok','Demo completada ✓ · resultados idénticos a la ejecución real (datahub: 29 datasets)');
+  logT('sys','Siguiente: ver `scripts/flujo_paso_a_paso.py --presentacion` para la demo narrada.');
+  running=false; $('btnRun').disabled=false; $('btnPause').disabled=true; paused=false;
+}
+
+function renderTG(){
+  const b=$('tgBubble');
+  b.innerHTML = '&#127807; <b>REPORTE NDVI — LIMA</b><br>'
+    + 'Ventana: 2026-08-04 → 2026-08-10 · fuente: Sentinel-2<br><br>'
+    + '<table class="report"><tr><th>Día</th><th>P bajo τ</th><th>NDVI medio</th><th>Estado</th></tr>'
+    + DIAS.map((d,i)=>'<tr><td>'+d.slice(5)+'</td><td><b>'+PCT[i].toFixed(1)+'%</b></td><td>'+MEDIA[i].toFixed(3)+'</td><td><span class="tag '+(MEDIA[i]<TAU?'warn':'ok')+'">'+((MEDIA[i]<TAU)?'degradado':'aceptable')+'</span></td></tr>').join('')
+    + '</table><br>'
+    + 'Δ = <b>+'+DELTA.toFixed(1)+' pp</b> (37.7% → 40.8%)<br>'
+    + 'Conclusión: <b style="color:var(--warn)">OBSERVACIÓN</b> — deterioro sostenido, aún sin umbral crítico.<br><br>'
+    + '&#128279; urn:datahub:dataset:terra.analisis_ndvi_tendencia_2026-08-10<br>'
+    + '<span style="color:var(--dim)">Mapa y serie completa en el dashboard.</span>';
+}
+
+/* ============ eventos ============ */
+$('btnRun').onclick=runDemo;
+$('btnReset').onclick=()=>{ if(running){running=false; paused=false;} resetUI(); };
+$('btnPause').onclick=()=>{ paused=!paused; $('btnPause').textContent=paused?'▶ Reanudar':'❚❚ Pausa';
+  if(paused) logT('warn','⏸ Pausado por el usuario.'); };
+$('selSpeed').onchange=e=>{ speed=parseFloat(e.target.value); };
+resetUI();
+wait(400).then(()=>{ if(!running){ document.querySelector('.query .caret').style.display='inline-block'; }});
+</script>
+</body>
+</html>
