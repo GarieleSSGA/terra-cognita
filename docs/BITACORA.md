@@ -36,6 +36,11 @@ Registro incremental de la sesión 2026-08-09 (últimos 2 h pre-entrega hackatho
 
 ## ✅ Lo que ya funciona (verificado hoy)
 
+- **Intérprete opencode como "cerebro"** (RAM cero local): `opencode run --pure`
+  devuelve el plan JSON en ~20 s (via: opencode). Cadena completa:
+  opencode -> Ollama -> llm_api -> heurística. Resolver del exe:
+  `%APPDATA%\npm\node_modules\opencode-ai\bin\opencode.exe` (CreateProcess no
+  resuelve los shims .cmd/.ps1). Config: sección `opencode` en config.yaml.
 - Telegram real: bot @ERRADICADORBOT → chat 7245893327 (message_id 32).
 - Generador de código GEE (7 plantillas distintas: ndvi/lluvia/humedad/ndwi/lst/evi/serie).
 - Raster sintético de humedad + evaluación.

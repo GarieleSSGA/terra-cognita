@@ -34,9 +34,7 @@ def main():
 
     resultado = orq.ejecutar(consulta)
     plan = resultado.get("plan", {})
-    via = ("cerebro local" if not plan.get("ollama_error")
-           else "heuristica" if "Ollama" in str(plan.get("ollama_error"))
-           else plan.get("via", "heuristica"))
+    via = plan.get("via", "cerebro local")
     print(f"[Plan] {plan.get('analisis')} en {plan.get('zona')} | "
           f"dias={plan.get('dias')} | via: {via}", flush=True)
 

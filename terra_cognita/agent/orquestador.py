@@ -18,7 +18,9 @@ demo nunca se queda "colgada" en silencio.
 """
 import json
 import re
+import subprocess
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturoTimeout
+from pathlib import Path
 
 from ..config import cargar_config
 from ..datahub_mcp.cliente import DataHubMCP
@@ -38,13 +40,19 @@ class Orquestador:
 
     # ------------------------------------------------------------------
     def interpretar(self, consulta: str) -> dict:
-        """Cadena de interpretación: Ollama local -> LLM API (respaldo) -> heurística.
+        """Cadena de interpretación: opencode -> Ollama local -> LLM API -> heurística.
 
-        - Ollama se intenta primero (modelo local, privado).
+        - opencode: agente IA del ecosistema (intérprete potente sin ocupar
+          RAM local con un modelo; útil para la demo de alto rendimiento).
+        - Ollama se intenta después (modelo local, privado).
         - Si no responde o tarda (RAM justa con Docker), se prueba la API
           LLM configurada en `llm_api` (OpenAI-compatible; p.ej. DeepSeek).
         - Si tampoco, heurística local: la demo NUNCA se cuelga.
         """
+        plan = self._interpretar_opencode(consulta)
+        if plan is not None:
+            return plan
+
         plan = self._interpretar_ollama(consulta)
         if "ollama_error" not in plan:
             return plan
@@ -54,6 +62,58 @@ class Orquestador:
             return plan_api
 
         return self._interpretar_fallback(consulta, plan.get("ollama_error", ""))
+
+    # ------------------------------------------------------------------
+    def _interpretar_opencode(self, consulta: str) -> dict | None:
+        """Llama al agente opencode (CLI) como intérprete temporal del plan.
+
+        opencode devuelve texto libre: se extrae el JSON entre llaves.
+        Si opencode no está, falla o tarda -> devuelve None y la cadena
+        de interpretación continúa (nunca rompe la demo).
+        """
+        opc = self.config.get("opencode") or {}
+        if not opc.get("activado", True):
+            return None
+        comando = self._resolver_opencode(opc.get("comando", "opencode"))
+        if comando is None:
+            return None
+        timeout = float(opc.get("timeout_s", 90))
+        mensajes = self._mensajes_planificador(consulta)
+        prompt = mensajes[0]["content"] + "\n\nConsulta: " + mensajes[-1]["content"]
+        try:
+            proc = subprocess.run(
+                [comando, "run", "--pure", prompt],
+                capture_output=True, text=True, timeout=timeout,
+                encoding="utf-8", errors="replace",
+                creationflags=subprocess.CREATE_NO_WINDOW)
+            texto = (proc.stdout or "") + "\n" + (proc.stderr or "")
+            inicio, fin = texto.find("{"), texto.rfind("}")
+            if inicio == -1 or fin == -1:
+                return None
+            plan = json.loads(texto[inicio:fin + 1])
+            plan["via"] = "opencode"
+            return plan
+        except Exception:
+            return None
+
+    @staticmethod
+    def _resolver_opencode(comando: str) -> str | None:
+        """Localiza el ejecutable real de opencode (shim npm en Windows).
+
+        npm deja opencode.cmd/.ps1 en %APPDATA%\npm; CreateProcess no los
+        resuelve solos, así que se apunta directo al .exe real si existe.
+        """
+        import shutil
+        for cand in (comando, "opencode"):
+            ruta = shutil.which(cand)
+            if ruta:
+                if not ruta.lower().endswith((".cmd", ".bat", ".ps1")):
+                    return ruta
+                exe = (Path(ruta).resolve().parent
+                       / "node_modules" / "opencode-ai" / "bin" / "opencode.exe")
+                if exe.exists():
+                    return str(exe)
+        return None
 
     # ------------------------------------------------------------------
     def _interpretar_ollama(self, consulta: str) -> dict:
@@ -119,6 +179,8 @@ class Orquestador:
                 '{"analisis": "ndvi"|"lluvia"|"humedad"|"ndwi"|"lst"|"evi"|'
                 '"estadisticas", "zona": "<nombre>", '
                 '"dias": <numero o null>, "datos_necesarios": ["<dataset o indice>"]}. '
+                "analisis debe ser EXACTAMENTE UN SOLO valor de esa lista "
+                "(sin uniones con | ni listas). "
                 "Reglas: vegetacion/sequia/NDVI -> ndvi; lluvia/inundacion/"
                 "precipitacion -> lluvia; humedad de suelo -> humedad; "
                 "agua/cuerpos de agua/riego -> ndwi; temperatura/calor/isoterma "

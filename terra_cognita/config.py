@@ -30,6 +30,11 @@ def cargar_config() -> dict:
     cfg["ollama"].setdefault("base_url", "http://localhost:11434")
     cfg["ollama"].setdefault("timeout_s", 90)
 
+    cfg.setdefault("opencode", {})
+    cfg["opencode"].setdefault("comando", _env("OPENCODE_COMANDO", cfg["opencode"].get("comando"), "opencode"))
+    cfg["opencode"].setdefault("activado", str(_env("OPENCODE_ACTIVADO", cfg["opencode"].get("activado"), "true")).lower() in ("1", "true", "si", "yes"))
+    cfg["opencode"].setdefault("timeout_s", 90)
+
     cfg.setdefault("llm_api", {})
     cfg["llm_api"]["base_url"] = _env("LLM_API_BASE", cfg["llm_api"].get("base_url"))
     cfg["llm_api"]["model"] = _env("LLM_API_MODEL", cfg["llm_api"].get("model"), "deepseek-chat")

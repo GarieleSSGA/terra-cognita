@@ -16,6 +16,13 @@ ollama:
   base_url: "http://localhost:11434"
   timeout_s: 90            # si el modelo tarda mas, se usa heuristica
 
+# Intérprete 1ro: agente opencode (CLI). Potente sin ocupar RAM local.
+# Desactivar (activado: false) para usar Ollama/API primero.
+opencode:
+  comando: "opencode"
+  activado: true           # env: OPENCODE_ACTIVADO
+  timeout_s: 90
+
 # Intérprete de respaldo (OpenAI-compatible) cuando Ollama no pueda correr
 # a la vez que Docker (RAM). Vacio = desactivado -> heuristica local.
 llm_api:
