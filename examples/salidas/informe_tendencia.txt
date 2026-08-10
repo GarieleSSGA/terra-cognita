@@ -1,0 +1,37 @@
+INFORME REAL DEL AGENTE - TENDENCIA NDVI LIMA (7 dias)
+Generado por: scripts/demo_temporal.py (salida real del sistema)
+----------------------------------------------------------
+>> Consulta: dame la vegetacion de Lima de los ultimos 7 dias
+
+[Plan] ndvi en Lima | dias=7 | via: opencode
+[DataHub] contexto MCP consultado (sin alucinar)
+
+== INFORME DE TENDENCIA (NDVI) ==
+ Zona   : Lima
+ Periodo: 2026-08-03 -> 2026-08-09 (7 dias)
+ Umbral de alerta: 0.3 (NDVI bajo este valor = vegetacion estresada/degradada)
+
+ Fecha        area baja  NDVI medio   bajo umbral 0.3
+ 2026-08-03       37.7%       0.344   ###########...................
+ 2026-08-04       38.3%       0.344   ###########...................
+ 2026-08-05       38.7%       0.342   ############..................
+ 2026-08-06       39.2%       0.340   ############..................
+ 2026-08-07       39.8%       0.337   ############..................
+ 2026-08-08       40.3%       0.335   ############..................
+ 2026-08-09       40.8%       0.332   ############..................
+
+ Cambio total: area bajo umbral 37.7% -> 40.8% (delta +3.1pp); NDVI medio -0.012
+ Conclusion  : vegetacion estable. OBSERVACION: deterioro leve
+ Resumen     : Ultimos 7 dias: area bajo umbral paso de 37.7% a 40.8%
+               (delta +3.1pp); NDVI medio -0.012 -> vegetacion estable.
+               Estado: OBSERVACION: deterioro leve.
+
+[DataHub] serie catalogada con linaje multiple:
+urn:li:dataset:(urn:li:dataPlatform:terraCognita,analisis_Lima_tendencia_35aff5,PROD)
+
+[Telegram] reporte enviado (message_id 35): informe formateado con tabla
+por dia, delta, conclusion y URN - ver chat del bot @ERRADICADORBOT.
+
+Los numeros son trazables: cada raster diario esta en el grafo de DataHub
+(raster_lima_2026-08-03 ... 2026-08-09) y el analisis apunta a todos con
+upstreamLineage.

@@ -1,0 +1,32 @@
+{
+  "urn": "urn:li:dataset:(urn:li:dataPlatform:terraCognita,analisis_lima_fed2bb,PROD)",
+  "propiedades": {
+    "consulta": "dame",
+    "zona": "lima",
+    "estado": "OK",
+    "analisis": "ndvi",
+    "metricas": {
+      "media": 0.3902587294578552,
+      "desvio": 0.22357377409934998,
+      "min": 0.05000000074505806,
+      "max": 0.8499839305877686,
+      "pixeles": 14400,
+      "crs": "EPSG:4326",
+      "shape": [
+        120,
+        120
+      ],
+      "bounds": [
+        -77.2,
+        -12.2,
+        -76.9,
+        -11.9
+      ],
+      "ndvi": {
+        "pct_bajo_umbral": 47.7,
+        "estado": "OK"
+      }
+    },
+    "raster": "data\\ndvi_lima.tif"
+  }
+}

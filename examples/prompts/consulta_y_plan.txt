@@ -1,0 +1,18 @@
+CONSULTA EJEMPLO + PLAN DEL AGENTE
+==================================
+Consulta del usuario (lenguaje natural):
+  "dame la vegetacion de Lima de los ultimos 7 dias"
+
+Plan interpretado por el agente (via: opencode - ia externa con 0 RAM
+local; en maquinas con RAM suficiente via: Ollama local privado):
+{
+  "analisis": "ndvi",
+  "zona": "Lima",
+  "dias": 7,
+  "datos_necesarios": ["NDVI"],
+  "via": "opencode"
+}
+
+El agente decidio: indice NDVI (vegetacion), zona Lima, serie de 7 dias
+(tendencia). Luego pregunto a DataHub (MCP) que datasets existian sobre
+el tema ('ndvi') antes de actuar: total 29+ datasets en el grafo.
