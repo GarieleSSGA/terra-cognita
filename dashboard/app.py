@@ -16,6 +16,16 @@ sys.path.insert(0, str(ROOT))
 
 st.set_page_config(page_title="Terra Cognita", page_icon="🛰️", layout="wide")
 
+st.html("""
+<style>
+  .stApp { background: linear-gradient(180deg, #0b1a2a 0%, #0e1117 40%); }
+  h1 { color: #36c1a0; }
+  h2, h3 { color: #7ec8ff; }
+  [data-testid="stMetricValue"] { color: #36c1a0; font-size: 1.6rem; }
+  [data-testid="stMetricLabel"] { color: #8ea6b8; }
+</style>
+""")
+
 st.markdown("# 🌍 Terra Cognita")
 st.markdown("Agente espacial · IA local + DataHub MCP + Google Earth Engine")
 
@@ -132,16 +142,43 @@ with col_l:
         st.write(res.get("resumen", res.get("detalle", "")))
 
         if res.get("serie"):
-            st.markdown("**Tendencia (área bajo umbral por día):**")
+            st.markdown("**Tendencia (área bajo umbral y NDVI medio por día):**")
             st.dataframe(res["serie"], use_container_width=True)
+            try:
+                import pandas as pd
+                df = pd.DataFrame(res["serie"])
+                if "fecha" in df.columns:
+                    df = df.set_index("fecha")
+                gra1, gra2 = st.columns(2)
+                with gra1:
+                    st.caption("Área bajo umbral %")
+                    st.line_chart(df[["pct_bajo"]], height=220)
+                with gra2:
+                    st.caption("NDVI medio")
+                    st.line_chart(df[["media_ndvi"]], height=220)
+            except Exception as exc:
+                st.warning(f"Grafico de tendencia no disponible: {exc}")
             st.write(f"Delta: {res.get('delta_pct'):+.1f}pp · "
                      f"NDVI medio {res.get('delta_media_ndvi'):+.3f} · "
                      f"Conclusión: {res.get('tendencia')}")
 
-        if res.get("raster") and Path(res["raster"]).exists():
-            st.markdown("**Mapa NDVI (raster analizado):**")
+        dias_map = {}
+        if res.get("serie") and res.get("serie_rasters"):
+            for p, r in zip(res["serie"], res["serie_rasters"]):
+                if Path(r).exists():
+                    dias_map[p["fecha"]] = r
+        ruta_mapa = res.get("raster")
+        if dias_map:
+            st.markdown("**Mapa NDVI por día (serie temporal):**")
+            dia = st.selectbox("Elige el día a visualizar:", list(dias_map.keys()))
+            ruta_mapa = dias_map.get(dia)
+        elif res.get("serie"):
+            ruta_mapa = res.get("serie_rasters", [None])[-1] or res.get("raster")
+
+        if ruta_mapa and Path(ruta_mapa).exists():
+            st.markdown(f"**Mapa NDVI** — `{Path(ruta_mapa).name}`")
             try:
-                m = _mapa_ndvi(res["raster"])
+                m = _mapa_ndvi(ruta_mapa)
                 st.components.v1.html(m._repr_html_(), height=420)
             except Exception as exc:
                 st.warning(f"No se pudo renderizar el mapa: {exc}")

@@ -8,6 +8,7 @@ Cada etapa imprime su detalle real: interpretacion, contexto DataHub (MCP),
 generacion de rasters, analisis, codigo GEE, write-back con linaje y reporte.
 """
 import sys
+import time
 from pathlib import Path
 
 sys.stdout.reconfigure(line_buffering=True)
@@ -16,11 +17,19 @@ sys.path.insert(0, str(ROOT))
 
 from terra_cognita.agent.orquestador import Orquestador
 
+PRESENTACION = "--presentacion" in sys.argv
+PAUSA = 6 if PRESENTACION else 0
 
-def etapa(titulo: str) -> None:
+
+def etapa(titulo: str, guion: str = "") -> None:
     print("\n" + "=" * 72, flush=True)
     print(f"  ETAPA: {titulo}", flush=True)
     print("=" * 72, flush=True)
+    if PRESENTACION:
+        if guion:
+            print(f"  🎙 [NARRA] {guion}", flush=True)
+        print(f"  (pausa de {PAUSA}s para explicar...)", flush=True)
+        time.sleep(PAUSA)
 
 
 def main():
@@ -28,11 +37,13 @@ def main():
         "dame la vegetacion de Lima de los ultimos 7 dias")
     orq = Orquestador()
 
-    etapa(f"1/8 CONSULTA del usuario")
+    etapa("1/8 CONSULTA del usuario",
+          "\"El usuario no sabe de GIS: pregunta en espanol y el sistema hace el resto.\"")
     print(f"  >> \"{consulta}\"", flush=True)
     print("  (texto libre en español, sin tecnicismos)", flush=True)
 
-    etapa("2/8 INTERPRETACION (agente decide el plan)")
+    etapa("2/8 INTERPRETACION (agente decide el plan)",
+          "\"Aqui el cerebro del sistema (hoy opencode, en produccion un modelo local con Ollama): entiende la intencion y arma el plan en JSON: que indice buscar, en que zona y cuantos dias.\"")
     plan = orq.interpretar(consulta)
     via = plan.get("via", "cerebro local")
     print(f"  Via: {via}", flush=True)
@@ -40,7 +51,8 @@ def main():
     print("  El agente entendio: analisis + zona + dias. "
           "Ahora sabe QUE buscar.", flush=True)
 
-    etapa("3/8 CONTEXTO en DataHub via MCP (sin alucinar)")
+    etapa("3/8 CONTEXTO en DataHub via MCP (sin alucinar)",
+          "\"Antes de actuar, el agente pregunta a su memoria (DataHub via MCP): que datasets hay del tema, qué columnas, de dónde vienen. Asi NO inventa: razona sobre datos reales.\"")
     contexto = orq.buscar_contexto_datahub(plan.get("analisis", ""))
     piezas = contexto.get("content", [])
     if piezas:
@@ -55,7 +67,8 @@ def main():
     dias = plan.get("dias")
     ruta = ""
 
-    etapa("4/8 GENERACION/MAPEADO de datos (sinteticos o GEE real)")
+    etapa("4/8 GENERACION/MAPEADO de datos (sinteticos o GEE real)",
+          "\"Por defecto usamos rasters sinteticos para que la demo sea rapida y reproducible; con una linea se cambia a datos reales de Sentinel-2 descargados por GEE.\"")
     if dias and int(dias) > 1:
         from terra_cognita.geo.sinteticos import generar_serie_ndvi
         n = min(int(dias), 30)
@@ -70,7 +83,8 @@ def main():
     print("  (en produccion la misma linea bajaria rasters reales "
           "de Sentinel-2 via GEE)", flush=True)
 
-    etapa("5/8 CALCULO AUTOMATICO del analisis geoespacial")
+    etapa("5/8 CALCULO AUTOMATICO del analisis geoespacial",
+          "\"El mismo pipeline calcula: porcentaje de area degradada, NDVI medio por dia, el cambio total y si eso es alerta, observacion o normal.\"")
     from terra_cognita.geo.analisis import evaluar_tendencia, evaluar_ndvi
     from terra_cognita.config import cargar_config
     cfg = cargar_config()
@@ -90,7 +104,8 @@ def main():
     print(f"  Estado: {res['estado']}", flush=True)
     print("  El sistema calcula % de area degradada, medias y delta.", flush=True)
 
-    etapa("6/8 CODIGO GOOGLE EARTH ENGINE auto-generado")
+    etapa("6/8 CODIGO GOOGLE EARTH ENGINE auto-generado",
+          "\"El agente tambien ES PROGRAMA: escribe el codigo JavaScript de Earth Engine adecuado a esta consulta, con zona pequena y descarga automatica.\"")
     codigo = orq._generar_codigo_gee(plan)
     print("  El agente 'escribe' el script JS ad-hoc de GEE:", flush=True)
     for linea in codigo.splitlines()[:14]:
@@ -99,7 +114,8 @@ def main():
     print("  Al descomentar/ejecutar en el Code Editor descarga el raster", flush=True)
     print("  (zona pequena ~2 km) y el pipeline lo procesa igual.", flush=True)
 
-    etapa("7/8 WRITE-BACK a DataHub (linaje: otros agentes heredan)")
+    etapa("7/8 WRITE-BACK a DataHub (linaje: otros agentes heredan)",
+          "\"El resultado NO se pierde: se escribe de vuelta en el grafo de DataHub, un dataset por dia, y el resumen apunta a todos con linaje. Otro agente puede heredar este analisis.\"")
     res["zona"] = zona
     res["plan"] = plan
     res["contexto_datahub"] = contexto
@@ -108,7 +124,8 @@ def main():
     print("  Cada raster de la serie quedo como dataset + el resumen apunta", flush=True)
     print("  (upstreamLineage) a todos: el grafo guarda la memoria temporal.", flush=True)
 
-    etapa("8/8 REPORTE FINAL (dashboard + Telegram)")
+    etapa("8/8 REPORTE FINAL (dashboard + Telegram)",
+          "\"Y el circulo se cierra: el usuario lo ve en el mapa del dashboard, y el agente se comunica por Telegram con un informe claro.\"")
     print(f"  Resumen: {resultado.get('resumen')}", flush=True)
     alerta = resultado.get("alerta")
     if isinstance(alerta, dict) and alerta.get("message_id"):

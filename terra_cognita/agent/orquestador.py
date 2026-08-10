@@ -302,6 +302,45 @@ class Orquestador:
         cfg = self.config["alertas"]
         if not cfg.get("telegram_token") or not cfg.get("chat_id"):
             return {"aviso": "TELEGRAM_TOKEN/CHAT_ID no configurados; alerta solo en log."}
-        texto = (f"[Terra Cognita] {resultado['estado']}\n"
-                 f"Zona: {resultado.get('zona')}\n{resultado}")
+        texto = self._texto_reporte(resultado)
         return enviar_mensaje(cfg["telegram_token"], cfg["chat_id"], texto)
+
+    @staticmethod
+    def _texto_reporte(resultado: dict) -> str:
+        """Informe legible para Telegram (tabla, numeros, conclusion)."""
+        from datetime import datetime
+        plan = resultado.get("plan", {})
+        lineas = [
+            "🛰️ TERRA COGNITA — Reporte de analisis",
+            "---------------------------------------",
+            f"📍 Zona     : {resultado.get('zona')}",
+            f"🔎 Analisis : {plan.get('analisis')} "
+            f"({resultado.get('tipo_analisis', 'snapshot')})",
+            f"📅 Emitido  : {datetime.now():%Y-%m-%d %H:%M}",
+            f"📌 Estado   : {resultado.get('estado')}",
+        ]
+        serie = resultado.get("serie") or []
+        if serie:
+            lineas.append(f"🗓 Periodo  : {serie[0]['fecha']} -> {serie[-1]['fecha']}")
+            lineas.append("")
+            lineas.append("Fecha        %bajo  NDVI")
+            lineas.append("-----------  -----  -----")
+            for p in serie:
+                lineas.append(
+                    f"{p['fecha']}  {p['pct_bajo']:>4}%  "
+                    f"{p['media_ndvi']:.3f}")
+            lineas.append("")
+            lineas.append(
+                f"Cambio: area bajo umbral {resultado.get('pct_bajo_inicial')}% -> "
+                f"{resultado.get('pct_bajo_final')}% "
+                f"(delta {resultado.get('delta_pct'):+.1f}pp) · "
+                f"NDVI medio {resultado.get('delta_media_ndvi'):+.3f}")
+            lineas.append(f"Conclusion: vegetacion {resultado.get('tendencia')}")
+        else:
+            lineas.append(f"ℹ️ Resumen: {resultado.get('resumen', '')}")
+        urn = resultado.get("urn_datahub")
+        if urn:
+            nombre = urn.rsplit(",", 2)[-2].strip(")") if "," in urn else urn
+            lineas.append("")
+            lineas.append(f"🔗 DataHub: {nombre} (ver linaje en :9002)")
+        return "\n".join(lineas)
