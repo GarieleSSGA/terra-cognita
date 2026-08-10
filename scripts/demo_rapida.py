@@ -8,6 +8,8 @@ Uso:  python scripts/demo_rapida.py "cual es el NDVI de Lima"
 import sys
 from pathlib import Path
 
+sys.stdout.reconfigure(line_buffering=True)
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 

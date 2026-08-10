@@ -12,8 +12,10 @@ def descargar_ndvi_gee(lon_oeste: float, lat_sur: float,
                        proyecto: str = "") -> str:
     """Descarga NDVI de Sentinel-2 para una zona y lo guarda como GeoTIFF.
 
+    Síncrono y sin Google Drive: calcula el promedio de la ventana y baja los
+    bytes con `getDownloadURL` (escala 500 m para que el tile quede pequeno).
     Requiere credenciales GEE: `earthengine authenticate` una sola vez.
-    Si GEE no está disponible, devuelve un mensaje claro (el flujo usa
+    Si GEE no está disponible, lanza un mensaje claro (el flujo usa
     sintéticos y no se rompe).
     """
     try:
@@ -41,11 +43,14 @@ def descargar_ndvi_gee(lon_oeste: float, lat_sur: float,
     ndvi = (imagen.select("B8").subtract(imagen.select("B4"))
             .divide(imagen.select("B8").add(imagen.select("B4"))))
 
+    url = ndvi.getDownloadURL({
+        "scale": 500, "region": region,
+        "format": "GEO_TIFF", "crs": "EPSG:4326"})
+    import requests
+    respuesta = requests.get(url, timeout=300)
+    respuesta.raise_for_status()
+
     ruta = Path(ruta_salida)
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    tarea = ee.batch.Export.image.toDrive(
-        image=ndvi.toFloat(), description="terra_cognita_ndvi",
-        folder="terra_cognita", scale=10, region=region,
-        fileFormat="GeoTIFF", maxPixels=1e9)
-    tarea.start()
-    return f"Export GEE iniciado (tarea {tarea.id}). Descarga el GeoTIFF de Google Drive."
+    ruta.write_bytes(respuesta.content)
+    return f"NDVI GEE descargado ({len(respuesta.content)} bytes) -> {ruta}"

@@ -1,99 +1,121 @@
-# ESTADO — Terra Cognita (Día 1)
+﻿# ESTADO â€” Terra Cognita (DÃ­a 2, cierre)
 
-Última sesión: completada la infraestructura MVP y el circuito de datos
-fully functional. Este archivo es para que el agente retome mañana sin
-perder el contexto.
+Ãšltima sesiÃ³n: resuelto el "bug silencioso" de `ciclo_completo.py`, aÃ±adido
+respaldo de interpretaciÃ³n por API LLM (`llm_api`), documentados los MCP
+servers geoespaciales externos (docs/MCP_SERVERS.md) y construido el **modo
+TENDENCIA** del agente espacial-temporal (serie de N dÃ­as + informe).
 
-## Lo que YA funciona (verificado ejecutando)
+## ðŸ†• Modo TENDENCIA (nuevo hoy, verificado ejecutando)
 
-| Componente | Estado | Evidencia |
-|---|---|---|
-| DataHub en Docker | ✅ arriba | http://localhost:9002 (datahub/datahub) |
-| MCP Server (`mcp-server-datahub` v0.6.0) modo HTTP | ✅ vivo | http://localhost:8000/health → ok; http://localhost:8000/mcp |
-| Cerebro local Ollama | ✅ gemma3:1b | `scripts/demo_rapida.py` → plan `ndvi/Lima` sin fallback |
-| Rasters sintéticos (NDVI, lluvia) | ✅ | data/ndvi_Lima.tif, 47.7% bajo umbral → OK |
-| Búsqueda MCP→DataHub (GraphQL real) | ✅ | `search` devuelve JSON total:N (`scripts/probar_mcp.py`) |
-| Write-back a DataHub | ✅ | `escribir_resultado()` crea dataset + linaje → buscar devuelve total:3, lineage upstreams:1 |
-| Demo ciclo completo | 🔴 PENDIENTE | `scripts/ciclo_completo.py` se cuelga en silencio (bug sin resolver, ver abajo) |
-| Telegram | ⏳ sin config | falta token/chat_id en config |
+`scripts/demo_temporal.py "dame la vegetacion de Lima de los ultimos 7 dias"`
+produce un informe detallado: tabla por fecha (Ã¡rea bajo umbral %, NDVI medio,
+barra visual), delta total, direcciÃ³n de la tendencia y conclusiÃ³n:
 
-## Bug a resolver MAÑANA (primera tarea)
+```
+[Plan] ndvi en lima | dias=7
+ Periodo: 2026-08-03 -> 2026-08-09 (7 dias)
+ Cambio total: area bajo umbral 37.7% -> 40.8% (delta +3.1pp); NDVI medio -0.012
+ Conclusion  : vegetacion estable. OBSERVACION: deterioro leve
+```
 
-`scripts/ciclo_completo.py` se queda **sin imprimir nada** (exit 0, stdout vacío,
-se cuelga antes del primer print). `demo_rapida.py` (mismos imports) funciona.
-Investigación pendiente:
-1. `python -u -X faulthandler ciclo_completo.py` → ver dónde se cuelga
-2. `python -c "import ciclo_completo"` → si es el import, bisectar los módulos
-3. Sospecha: `orq.cerrar_ciclo()` afecta, o el `import json as _json` dentro de main, o
-   error silencioso de encoding al volcar resultados con acentos en f-string sobre
-   stdout piped (probado `PYTHONIOENCODING=utf-8` sin éxito).
-4. Fix probable: mover orquestación dentro de `if __name__`, activar stderr
-   (log a archivo en vez de print) y revisar con `>` redirección real a fichero.
+Piezas:
+- `terra_cognita/geo/sinteticos.py::generar_serie_ndvi` â€” N GeoTIFFs por fecha
+  (foco de degradaciÃ³n creciente + declive global progresivo).
+- `terra_cognita/geo/analisis.py::evaluar_tendencia` â€” serie pct/NDVI + delta +
+  estado ALERTA/OBSERVACION/OK.
+- `orquestador.ejecutar()` â€” si plan trae `dias` (>1) â†’ tendencia; si no â†’ snapshot.
+- Prompts (Ollama y heurÃ­stica) entienden "ultimos N dias"/"evolucion".
+- `scripts/demo_temporal.py` â€” informe en texto plano listo para copiar.
 
-## Comandos rápidos
+## Lo que quedÃ³ CORRIDO Y VERIFICADO hoy (evidencia REAL de DataHub)
+
+- **Ciclo completo con DataHub arriba, de punta a punta**: contexto MCP,
+  anÃ¡lisis 47.7%, **write-back real** (sin fallback local) creÃ³
+  `analisis_lima_d6bf36` y la verificaciÃ³n MCP confirmÃ³ **total:5 datasets**
+  en el grafo. Todo con prints en vivo (fix de flush).
+- MCP server HTTP persistente + GMS 200 + 5 contenedores sanos.
+- RAM libre tras el arranque: ~0.3 GB â†’ los imports van lento pero el ciclo
+  termina (~3-4 min, la mayor parte en el timeout de Ollama).
+
+## RESUMEN DEL DÃA
+
+1. Causa raÃ­z del "hang": prints sin flush + proceso de 3-4.5 min = salida
+   invisible al matar por timeout. NO era encoding.
+2. Fix: flush en scripts + timeouts (Ollama 90s â†’ heurÃ­stica; MCP 45s) +
+   write-back con fallback local que ya no crashea.
+3. `llm_api`: intÃ©rprete de respaldo OpenAI-compatible (env LLM_API_KEY/BASE/MODEL)
+   probado su skip correcto cuando no hay clave.
+4. MCP externos: docs/MCP_SERVERS.md con 5 servidores evaluados + plan.
+5. Modo tendencia: NUEVO y funcionando (arriba).
+
+## Piezas tocadas hoy
+
+- `scripts/ciclo_completo.py` â€” reescrito (decir() con flush, avisos claros).
+- `terra_cognita/agent/orquestador.py` â€” cadena interpretar (Ollamaâ†’llm_apiâ†’
+  heurÃ­stica), regex de dÃ­as, ejecutar() con rama tendencia.
+- `terra_cognita/datahub_mcp/cliente.py` â€” asyncio.wait_for 45s.
+- `terra_cognita/datahub_write/catalogar.py` â€” asegurar_raster_fuente dentro
+  del try/except (fallback local, no crash).
+- `terra_cognita/geo/sinteticos.py`, `geo/analisis.py` â€” serie + tendencia.
+- `terra_cognita/config.py`/`config.yaml` â€” ollama.timeout_s, llm_api.
+- `scripts/demo_rapida.py`, `scripts/probar_mcp.py` â€” line_buffering.
+- `scripts/demo_temporal.py` â€” NUEVO: informe de tendencia.
+- `docs/MCP_SERVERS.md` â€” NUEVO. `docs/ESTADO.md` â€” este.
+
+## Comandos rÃ¡pidos
 
 ```powershell
-# Subir DataHub (si apagado): necesita Kafka corriendo (GMS no arranca sin él)
-docker start datahub-mysql-1 datahub-opensearch-1 datahub-kafka-broker-1 datahub-datahub-gms-quickstart-1 datahub-frontend-quickstart-1
+Remove-Item Env:CURL_CA_BUNDLE   # SIEMPRE primero, por sesiÃ³n
 
-# Subir servidor MCP HTTP (persistente, ~30 s de arranque)
+# Toda la pila (Docker -> GMS -> MCP server -> demos)
+Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+docker start datahub-mysql-1 datahub-opensearch-1 datahub-kafka-broker-1 datahub-datahub-gms-quickstart-1 datahub-frontend-quickstart-1
 $env:DATAHUB_GMS_HOST="localhost"; $env:DATAHUB_GMS_PORT="8080"; $env:DATAHUB_GMS_PROTOCOL="http"
 Start-Process -FilePath "<ROOT>\.venv\Scripts\mcp-server-datahub.exe" -ArgumentList "--transport","http" -WindowStyle Hidden
+# health: http://localhost:8080/health y http://localhost:8000/health
 
-# Demo núcleo (sin DataHub necesario)
-<ROOT>\.venv\Scripts\python.exe scripts\demo_rapida.py "dame el NDVI de Lima"
+# Demos (el quoting de PowerShell con & NO se rompe; Start-Process SÃ parte args con espacios)
+<ROOT>\.venv\Scripts\python.exe scripts\ciclo_completo.py "dame el NDVI de Lima"     # ciclo con DataHub
+<ROOT>\.venv\Scripts\python.exe scripts\demo_temporal.py "dame la vegetacion de Lima de los ultimos 7 dias"
+<ROOT>\.venv\Scripts\python.exe scripts\demo_rapida.py "cual es el NDVI de Lima"
 
-# Prueba MCP (lista herramientas)
-<ROOT>\.venv\Scripts\python.exe scripts\probar_mcp.py
-
-# Ollama
-ollama serve   # si no responde http://localhost:11434
+# IntÃ©rprete por API (recomendado con Docker arriba, Ollama no aguanta la RAM):
+$env:LLM_API_BASE="https://api.deepseek.com/v1"; $env:LLM_API_KEY="<clave>"; $env:LLM_API_MODEL="deepseek-chat"
 ```
-Venov path: `.venv\Scripts\python.exe` (Python 3.11). El python 3.14 del sistema NO sirve (pydantic-core sin wheels).
 
-## Trampas del entorno (IMPORTANTE - se rompen sin estos fixes)
+## Trampas del entorno (vigentes del dÃ­a 1 + de hoy)
 
-1. **`CURL_CA_BUNDLE`** mal definido (apunta a cert de PostgreSQL inexistente).
-   Rompe pip/requests (`OSError: TLS CA bundle`). Fix por sesión:
-   `Remove-Item Env:CURL_CA_BUNDLE`
-2. **`PROJ_LIB`/`GDAL_DATA`/`PROJ_DATA`** apuntan a PostgreSQL. Rompen rasterio
-   (`Cannot find proj.db`). `terra_cognita/__init__.py` ya los quita al importar.
-3. **RAM de la máquina es 7.7 GB total**. Docker-WSL configurado a 5 GB (en
-   `%USERPROFILE%\.wslconfig`). NO correr Qwen 3:4b con Docker arriba (500):
-   usar `gemma31b` (config.yaml) o apagar Docker para demo con Ollama robusto.
-4. **DataHub**: no detener `kafka-broker` (GMS no arranca sin él).
-   `datahub-actions` SÍ se puede detener (ahorra RAM).
-5. Python 3.11 es el bueno: `C:\Users\user\AppData\Local\Programs\Python\Python311\`.
+1. `CURL_CA_BUNDLE` roto â†’ Remove-Item Env:CURL_CA_BUNDLE.
+2. PROJ_LIB/GDAL_DATA â†’ los limpia `terra_cognita/__init__.py`.
+3. RAM 7.65 GB: Docker arriba = ~0.3 GB libres â†’ Ollama timeouts, imports lentos.
+   Con Docker abajo hay espacio para Ollama (gemma3:1b) â€” elegir uno u otro.
+4. **Start-Process parte argumentos con espacios** â†’ usar `& python.exe ...` con
+   comillas para las demos.
+5. No detener kafka-broker. Python 3.11 del venv es el bueno.
 
-## Módulos y piezas clave
+## Siguientes pasos (por orden)
 
-- `terra_cognita/agent/orquestador.py` — cerebro: interpretar (Ollama) → contexto
-  (MCP) → ejecutar (geo) → cerrar_ciclo (write-back + alerta)
-- `terra_cognita/datahub_mcp/cliente.py` — HTTP al servidor MCP (URL_MCP=http://localhost:8000/mcp),
-  auto-arranque del servidor si no existe (espera hasta 90 s)
-- `terra_cognita/datahub_write/catalogar.py` — MCE con `DatasetSnapshotClass` (el
-  MCP nuevo `emit_mcp` falla con avro; NO usar → ya probado)
-- `terra_cognita/geo/*` — sinteticos.py (raster sintético), gee.py (Sentinel-2 real, 1 flag),
-  analisis.py (estadísticas + umbrales), datos.py (multi-fuente)
-- `terra_cognita/alertas/telegram_bot.py` — envío Telegram (reutilizado del
-  sistema de deforestación anterior)
-- `config/config.yaml` — modelo, umbrales, tokens (hojas vacías = no configurado)
+1. ðŸ”´ Probar `llm_api` con clave real (le da al agente el "cerebro" estando
+   Docker arriba; hoy cayÃ³ a heurÃ­stica por timeout de Ollama).
+2. âœ… **SERIE temporal en DataHub â€” HECHO y verificado**: `escribir_serie`
+   crea 1 dataset por fecha (`raster_<zona>_<fecha>`) + resumen
+   `analisis_<zona>_tendencia` con upstreamLineage mÃºltiple. Evidencia vÃ­a
+   MCP: search "tendencia" total=5, search "lima" total=22 (rasters por dÃ­a
+   incluidos). Fix extra: `demo_temporal.py` desempaca `["urn_datahub"]`
+   (cerrar_ciclo devuelve dict, no URN -> print cp1252 morÃ­a).
+   ðŸ”’ AdemÃ¡s: `config/config.yaml` (tokens reales) fuera de git + nuevo
+   `config/config.example.yaml` sanitizado â€” revisar antes del push pÃºblico.
+3. ðŸŸ¡ Zona real: geocodificar "tal lugar" (Nominatim/geopy) en vez de "lima"
+   fija; con eso GEE real + bbox funcionarÃ­a para cualquier ciudad.
+4. ðŸŸ¡ gis-mcp (docs/MCP_SERVERS.md) + puente stdio.
+5. ðŸŸ¡ Telegram real (token BotFather + chat_id).
+6. ðŸŸ¡ Dashboard Streamlit (mapa folium + chat + tendencia).
+7. ðŸŸ¢ GitHub pÃºblico + push (LICENSE Apache 2.0 ya estÃ¡).
 
-## Siguientes pasos (por orden prioridad)
+## Pitch que vende (para el video â€” el usuario lo graba Ã©l)
 
-1. 🔴 Arreglar `ciclo_completo.py` (bug silencioso)
-2. 🟡 Subir la GEE real a Puerto en config → `fuente_default: "gee"` y probar 1 línea
-   (necesita `earthengine authenticate` una vez; si falla, seguir conGEE
-   sintético: sin auth reportar error claro)
-3. 🟡 Telegram: pedir al usuario token BotFather + chat_id y probar envío real
-4. 🟡 Dashboard Streamlit (`dashboard/app.py`) — instalar streamlit en venv,
-   renderizar raster en mapa (folium/plotly) + chat
-5. 🟢 Repositorio GitHub público (Apache 2.0 ya en LICENSE) + primer push
-6. 🟢 Video demo (≤3 min) guion en `docs/` — los jurados ven SOLO ese video
-
-## Pitch que vende (para el video)
-
-> "Modelo local pequeño + DataHub como memoria = agente que NO alucina.
-> Preguntas en español → búsqueda real en el grafo (MCP), análisis de riesgo
-> geoes-espacial, resultado escrito DE VUELTA a DataHub con linaje para que
-> otros agentes lo hereden, y alerta por Telegram si hay riesgo."
+> "Modelo local pequeÃ±o + DataHub como memoria = agente que NO alucina.
+> Preguntas en espaÃ±ol â†’ bÃºsqueda real en el grafo (MCP), anÃ¡lisis de riesgo
+> geoespacial â€”puntual o por tendencia de N dÃ­asâ€”, resultado escrito DE VUELTA
+> a DataHub con linaje para que otros agentes lo hereden, y alerta por Telegram
+> si hay riesgo."

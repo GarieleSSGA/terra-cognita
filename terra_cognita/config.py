@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-RUTA_CONFIG = Path(__file__).resolve().parents[2] / "config" / "config.yaml"
+RUTA_CONFIG = Path(__file__).resolve().parents[1] / "config" / "config.yaml"
 
 
 def cargar_config() -> dict:
@@ -28,6 +28,13 @@ def cargar_config() -> dict:
     cfg.setdefault("ollama", {})
     cfg["ollama"].setdefault("model", _env("OLLAMA_MODEL", cfg["ollama"].get("model"), "qwen3:4b"))
     cfg["ollama"].setdefault("base_url", "http://localhost:11434")
+    cfg["ollama"].setdefault("timeout_s", 90)
+
+    cfg.setdefault("llm_api", {})
+    cfg["llm_api"]["base_url"] = _env("LLM_API_BASE", cfg["llm_api"].get("base_url"))
+    cfg["llm_api"]["model"] = _env("LLM_API_MODEL", cfg["llm_api"].get("model"), "deepseek-chat")
+    cfg["llm_api"]["api_key"] = _env("LLM_API_KEY", cfg["llm_api"].get("api_key"))
+    cfg["llm_api"].setdefault("timeout_s", 60)
 
     cfg.setdefault("gee", {})
     cfg["gee"].setdefault("fuente_default", "sintetico")
@@ -37,6 +44,7 @@ def cargar_config() -> dict:
     cfg["alertas"]["chat_id"] = _env("CHAT_ID", cfg["alertas"].get("chat_id"))
     cfg["alertas"].setdefault("umbral_ndvi", 0.3)
     cfg["alertas"].setdefault("umbral_lluvia_mm", 50)
+    cfg["alertas"].setdefault("umbral_humedad", 30)
 
     cfg.setdefault("dashboard", {})
     cfg["dashboard"].setdefault("host", "localhost")

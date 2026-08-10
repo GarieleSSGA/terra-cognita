@@ -68,9 +68,9 @@ def escribir_resultado(resultado: dict, consulta: str) -> str:
     props = _props(resultado, consulta)
     zona = resultado.get("zona", "zona")
     urn = _urn_dataset(f"analisis_{zona}_{uuid.uuid4().hex[:6]}")
-    urn_fuente = asegurar_raster_fuente(zona, str(resultado.get("raster", "")))
 
     try:
+        urn_fuente = asegurar_raster_fuente(zona, str(resultado.get("raster", "")))
         aspecto_props = DatasetPropertiesClass(
             name=f"analisis_{zona}",
             qualifiedName=urn,
@@ -93,6 +93,64 @@ def escribir_resultado(resultado: dict, consulta: str) -> str:
             _json_utf8({"urn": urn, "propiedades": props}),
             encoding="utf-8")
         return f"{urn} (fallback local: {exc})"
+
+
+def escribir_serie(resultado: dict, consulta: str) -> str:
+    """Cataloga una serie temporal: un dataset por fecha + resumen con linaje.
+
+    Cada raster de la serie (`serie_rasters`) se registra como dataset
+    `raster_<zona>_<fecha>` y el dataset resumen `analisis_<zona>_tendencia`
+    apunta (upstreamLineage) a todos ellos: el grafo muestra la memoria
+    temporal completa y otros agentes la pueden heredar.
+    """
+    from datahub.metadata.schema_classes import (
+        DatasetPropertiesClass, UpstreamClass, UpstreamLineageClass)
+
+    serie = resultado.get("serie", [])
+    rutas = resultado.get("serie_rasters", [])
+    zona = resultado.get("zona", "zona")
+    analisis = resultado.get("plan", {}).get("analisis", "ndvi")
+
+    urn_resumen = _urn_dataset(f"analisis_{zona}_tendencia_{uuid.uuid4().hex[:6]}")
+    upstreams = []
+
+    try:
+        for item, ruta in zip(serie, rutas):
+            fecha = item.get("fecha", "?")
+            urn_dia = _urn_dataset(f"raster_{zona}_{fecha}")
+            _emit_mce(urn_dia, [DatasetPropertiesClass(
+                name=f"raster_{zona}_{fecha}",
+                qualifiedName=urn_dia,
+                description=(
+                    f"Raster {analisis} de {zona} del {fecha}. "
+                    f"pct_bajo={item.get('pct_bajo')}%, "
+                    f"media={item.get('media_ndvi')}. Fuente: {ruta}"
+                ),
+            )])
+            upstreams.append(UpstreamClass(dataset=urn_dia, type="TRANSFORMED"))
+
+        desc = (f"Serie temporal {analisis} de {zona} "
+                f"({resultado.get('dias')} dias, "
+                f"{serie[0]['fecha']} -> {serie[-1]['fecha']}): "
+                f"{resultado.get('resumen', '')}")
+        _emit_mce(urn_resumen, [
+            DatasetPropertiesClass(
+                name=f"analisis_{zona}_tendencia",
+                qualifiedName=urn_resumen,
+                description=desc,
+            ),
+            UpstreamLineageClass(upstreams=upstreams),
+        ])
+        return urn_resumen
+    except Exception as exc:
+        ruta = Path("data/resultados_catalogados")
+        ruta.mkdir(parents=True, exist_ok=True)
+        archivo = ruta / f"{urn_resumen.split(',')[1]}.json"
+        archivo.write_text(
+            _json_utf8({"urn": urn_resumen, "tipo": "serie",
+                        "propiedades": _props(resultado, consulta)}),
+            encoding="utf-8")
+        return f"{urn_resumen} (fallback local: {exc})"
 
 
 def resumen_json(props: dict) -> str:

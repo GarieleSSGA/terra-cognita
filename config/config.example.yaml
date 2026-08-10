@@ -1,0 +1,41 @@
+# =========================================================
+# Configuración central de Terra Cognita (EJEMPLO)
+# Copia este archivo a config/config.yaml y rellena tus datos.
+# config.yaml NO se sube a git (ver .gitignore).
+# Alternativa: usar variables de entorno (TELEGRAM_TOKEN,
+# CHAT_ID, LLM_API_KEY, LLM_API_BASE, LLM_API_MODEL, OLLAMA_MODEL).
+# =========================================================
+
+datahub:
+  frontend_url: "http://localhost:9002"
+  gms_url: "http://localhost:8080"
+  token: ""                 # token de acceso API (vacío = sin autenticar)
+
+ollama:
+  model: "gemma3:1b"
+  base_url: "http://localhost:11434"
+  timeout_s: 90            # si el modelo tarda mas, se usa heuristica
+
+# Intérprete de respaldo (OpenAI-compatible) cuando Ollama no pueda correr
+# a la vez que Docker (RAM). Vacio = desactivado -> heuristica local.
+llm_api:
+  base_url: ""            # p.ej. https://api.deepseek.com/v1 (o env LLM_API_BASE)
+  model: "deepseek-chat"  # o "openrouter/..." (o env LLM_API_MODEL)
+  api_key: ""             # env: LLM_API_KEY (nunca en git)
+  timeout_s: 60
+
+gee:
+  project_id: "TU_PROYECTO_GCP"      # proyecto GCP (earthengine authenticate)
+  coleccion: "COPERNICUS/S2_SR_HARMONIZED"
+  fuente_default: "sintetico"     # "sintetico" (demo) | "gee" (real)
+
+alertas:
+  telegram_token: "TU_TOKEN_BOTFATHER"   # env: TELEGRAM_TOKEN
+  chat_id: "TU_CHAT_ID"                  # env: CHAT_ID
+  umbral_ndvi: 0.3            # bajo este valor -> alerta de sequía
+  umbral_lluvia_mm: 50        # >= este valor -> alerta de inundación
+  umbral_humedad: 30          # < este % de humedad -> suelo seco
+
+dashboard:
+  host: "localhost"
+  puerto: 8501

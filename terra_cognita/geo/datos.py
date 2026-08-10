@@ -6,7 +6,8 @@ no está disponible: la fuente sintética es el modo por defecto.
 """
 from pathlib import Path
 
-from .sinteticos import generar_ndvi_sintetico, generar_lluvia_sintetica
+from .sinteticos import (generar_ndvi_sintetico, generar_lluvia_sintetica,
+                         generar_humedad_sintetica, generar_serie_ndvi)
 
 OL = -77.20  # lon oeste bbox (Lima)
 SL = -12.20  # lat sur
@@ -38,3 +39,14 @@ class FuenteData:
         return generar_lluvia_sintetica(
             str(ruta),
             lon_oeste=OL, lat_sur=SL, lon_este=EL, lat_norte=NL)
+
+    def humedad(self, zona: str) -> str:
+        ruta = self.ruta_base / f"humedad_{zona}.tif"
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        return generar_humedad_sintetica(
+            str(ruta),
+            lon_oeste=OL, lat_sur=SL, lon_este=EL, lat_norte=NL)
+
+    def serie_ndvi(self, zona: str, dias: int = 7) -> list[str]:
+        """Serie temporal sintetica NDVI: una ruta GeoTIFF por fecha."""
+        return generar_serie_ndvi("data/series", f"ndvi_{zona}", dias)

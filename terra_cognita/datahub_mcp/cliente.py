@@ -96,7 +96,9 @@ class DataHubMCP:
                     return _contenido_plano(res)
 
         try:
-            return asyncio.run(_correr())
+            return asyncio.run(asyncio.wait_for(_correr(), timeout=45))
+        except asyncio.TimeoutError:
+            return {"error": f"MCP DataHub: timeout tras 45s ({nombre_tool})"}
         except Exception as exc:
             return {"error": f"MCP DataHub: {exc}"}
 
