@@ -39,6 +39,7 @@ gee:
 alertas:
   telegram_token: "TU_TOKEN_BOTFATHER"   # env: TELEGRAM_TOKEN
   chat_id: "TU_CHAT_ID"                  # env: CHAT_ID
+  reporte_siempre: true      # enviar reporte a Telegram en CADA consulta (no solo alertas)
   umbral_ndvi: 0.3            # bajo este valor -> alerta de sequía
   umbral_lluvia_mm: 50        # >= este valor -> alerta de inundación
   umbral_humedad: 30          # < este % de humedad -> suelo seco

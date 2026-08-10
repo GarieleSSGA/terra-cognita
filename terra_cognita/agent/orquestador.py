@@ -289,7 +289,10 @@ class Orquestador:
         resultado["urn_datahub"] = urn
 
         alerta = None
-        if "ALERTA" in str(resultado.get("estado", "")):
+        cfg_alertas = self.config.get("alertas") or {}
+        es_alerta = "ALERTA" in str(resultado.get("estado", ""))
+        enviar_siempre = bool(cfg_alertas.get("reporte_siempre", False))
+        if es_alerta or enviar_siempre:
             alerta = self._alertar(resultado)
         resultado["alerta"] = alerta
         return resultado

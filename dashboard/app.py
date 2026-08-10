@@ -16,45 +16,8 @@ sys.path.insert(0, str(ROOT))
 
 st.set_page_config(page_title="Terra Cognita", page_icon="🛰️", layout="wide")
 
-# ------------------------------------------------------------------ mascota
-PLANETA_SVG = """
-<svg width="150" height="150" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="atmos" cx="35%" cy="35%">
-      <stop offset="0%" stop-color="#7ec8ff"/>
-      <stop offset="100%" stop-color="#1d4e89"/>
-    </radialGradient>
-    <radialGradient id="tierra" cx="40%" cy="35%">
-      <stop offset="0%" stop-color="#5ac06b"/>
-      <stop offset="55%" stop-color="#2e8b57"/>
-      <stop offset="100%" stop-color="#145a32"/>
-    </radialGradient>
-  </defs>
-  <circle cx="75" cy="75" r="62" fill="url(#atmos)" opacity="0.35"/>
-  <circle cx="75" cy="75" r="50" fill="url(#tierra)"/>
-  <path d="M35 88 Q55 70 78 80 Q100 90 118 72" stroke="#36c1a0" stroke-width="7"
-        fill="none" opacity="0.85" stroke-linecap="round"/>
-  <path d="M45 62 Q62 52 82 58 Q98 63 110 55" stroke="#d8f3dc" stroke-width="3"
-        fill="none" opacity="0.6" stroke-linecap="round"/>
-  <circle cx="105" cy="45" r="7" fill="#fffde7" opacity="0.9"/>
-  <ellipse cx="75" cy="75" rx="52" ry="14" fill="none" stroke="#4d9bd6"
-           stroke-width="2" opacity="0.7" transform="rotate(-8 75 75)"/>
-  <circle cx="75" cy="75" r="52" fill="none" stroke="#bfe3ff" stroke-width="2"/>
-</svg>
-"""
-
-st.markdown(
-    f"""
-    <div style="text-align:center; padding:8px;">
-      {PLANETA_SVG}
-      <h1 style="color:#1d4e89; font-family:sans-serif; margin:2px 0 0 0;">
-        🌍 Terra Cognita</h1>
-      <p style="color:#555; font-family:sans-serif; margin-top:0;">
-        Agente espacial · IA local + DataHub MCP + Google Earth Engine</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("# 🌍 Terra Cognita")
+st.markdown("Agente espacial · IA local + DataHub MCP + Google Earth Engine")
 
 
 # ------------------------------------------------------------------ estado
@@ -84,7 +47,8 @@ def _mapa_ndvi(ruta_tif):
     import numpy as np
     import rasterio
     import folium
-    from folium.plugins import Colormap
+    from folium.raster_layers import ImageOverlay
+    from branca.colormap import LinearColormap
 
     with rasterio.open(ruta_tif) as src:
         arr = src.read(1)
@@ -95,15 +59,35 @@ def _mapa_ndvi(ruta_tif):
     x = np.linspace(lon0, lon1, arr.shape[1])
     y = np.linspace(lat1, lat0, arr.shape[0])   # fila 0 = norte
     xx, yy = np.meshgrid(x, y)
-    cmap = Colormap(colors=["#8B0000", "#FFD700", "#228B22"],
-                    vmin=float(np.nanmin(arr)), vmax=float(np.nanmax(arr)))
+    vmin, vmax = float(np.nanmin(arr)), float(np.nanmax(arr))
+    cmap = LinearColormap(colors=["#8B0000", "#FFD700", "#228B22"],
+                          vmin=vmin, vmax=vmax)
     cmap.caption = "NDVI"
     m.add_child(cmap)
-    folium.ImageOverlay(
-        image=cmap(arr).reshape(arr.shape[0], arr.shape[1], 3),
+    img = _rgbizar(arr, vmin, vmax)
+    ImageOverlay(
+        image=img,
         bounds=[[lat0, lon0], [lat1, lon1]], opacity=0.75,
     ).add_to(m)
     return m
+
+
+def _rgbizar(arr, vmin, vmax, nan_color=(230, 230, 230)):
+    """Convierte un raster a imagen RGB (HxWx3) con degradado rojo->amarillo->verde."""
+    import numpy as np
+    validos = ~np.isnan(arr)
+    norm = np.zeros_like(arr, dtype=float)
+    if vmax > vmin:
+        norm[validos] = (arr[validos] - vmin) / (vmax - vmin)
+    stops = np.array([[0x8B, 0x00, 0x00], [0xFF, 0xD7, 0x00], [0x22, 0x8B, 0x22]],
+                     dtype=float)
+    pos = np.clip(norm, 0, 1) * (len(stops) - 1)
+    i0 = np.floor(pos).astype(int)
+    i1 = np.minimum(i0 + 1, len(stops) - 1)
+    frac = (pos - i0)[..., None]
+    img = stops[i0] * (1 - frac) + stops[i1] * frac
+    img[~validos] = nan_color
+    return img.astype(np.uint8)
 
 
 # ------------------------------------------------------------------ cuerpo
@@ -126,9 +110,7 @@ with col_l:
     res = st.session_state.get("ultimo")
     if res:
         plan = res.get("plan", {})
-        via = ("cerebro local" if not plan.get("ollama_error")
-               else "heurística" if "Ollama" in str(plan.get("ollama_error"))
-               else (plan.get("via", "heurística")))
+        via = plan.get("via", "heurística" if plan.get("ollama_error") else "cerebro local")
         st.markdown("---")
         c1, c2, c3 = st.columns(3)
         c1.metric("Análisis", plan.get("analisis", "?"))

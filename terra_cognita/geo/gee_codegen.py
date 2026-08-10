@@ -9,9 +9,14 @@ Uso desde el orquestador:  resultado["codigo_gee"] = generar_codigo_gee(plan)
 """
 from datetime import date, timedelta
 
-# Bbox por defecto (Lima) â€” se puede geocodificar despuÃ©s.
-LIMA = {"lon_oeste": -77.20, "lat_sur": -12.20,
-        "lon_este": -76.90, "lat_norte": -11.90}
+# Bbox por defecto: zona PEQUEÑA (~2x2 km en Lima) para descargas rapidas
+# y dentro de la cuota gratuita de GEE. Se amplia/con plaza con plan["bbox"].
+LIMA = {"lon_oeste": -77.060, "lat_sur": -12.070,
+        "lon_este": -77.040, "lat_norte": -12.050}
+
+# variable de salida de cada plantilla (para el bloque de descarga)
+VARIABLE_SALIDA = {"ndvi": "ndvi", "lluvia": "total", "humedad": "smap",
+                   "ndwi": "ndwi", "lst": "mod", "evi": "evi", "serie": "ndvi"}
 
 
 def _bbox_objeto(plan: dict) -> dict:
@@ -176,11 +181,35 @@ def mapear_analisis(analisis: str) -> str:
     return "ndvi"
 
 
+def _bloque_descarga(analisis: str, zona: str, escala: int, var: str) -> str:
+    """Cierra el script con la descarga automatica del raster (zona pequena).
+
+    getDownloadURL devuelve un enlace GEOTIFF que se descarga directo del
+    Code Editor; Export.image.toDrive guarda el archivo en Drive. Con la
+    zona pequena (~2 km) la tarea termina en segundos y cabe en la cuota.
+    """
+    if analisis == "serie":
+        return (
+            "// ===== DESCARGA AUTOMATICA (serie) =====\n"
+            "// serie.csv ya sale via Export.table.toDrive (arriba).\n"
+            "// Para raster por dia, repite con ndvi.filterDate(fecha) en un loop.\n")
+    return (
+        f"// ===== DESCARGA AUTOMATICA ({zona}, bbox pequeno ~2 km) =====\n"
+        f"// 1) Enlace directo GEOTIFF (requiere cuenta autenticada):\n"
+        f"print({var}.clip(zona).getDownloadURL({{scale: {escala}, "
+        f"region: zona, format: 'GEO_TIFF'}}));\n"
+        f"// 2) Guardar en Google Drive (tarea asincrona en la pestana Tasks):\n"
+        f"// Export.image.toDrive({{image: {var}.clip(zona), "
+        f"description: 'TC_{analisis}_{zona}', folder: 'terra_cognita', "
+        f"scale: {escala}, region: zona, maxPixels: 1e9}});\n")
+
+
 def generar_codigo_gee(plan: dict, escala: int = 250) -> str:
     """Devuelve el script JavaScript de Earth Engine para el plan.
 
     Diferente para cada analisis/zona/fechas: el agente 'escribe codigo'
-    segun lo que pida el usuario (requisito de la hackaton).
+    segun lo que pida el usuario (requisito de la hackaton). Cierra con la
+    descarga automatica del raster (zona pequena por defecto).
     """
     analisis = mapear_analisis(plan.get("analisis", "ndvi"))
     zona = plan.get("zona", "zona").replace(" ", "_")
@@ -188,13 +217,15 @@ def generar_codigo_gee(plan: dict, escala: int = 250) -> str:
     f_inicio, f_fin = _fechas(plan)
     coords = [b["lon_oeste"], b["lat_sur"], b["lon_este"], b["lat_norte"]]
     plantilla = PLANTILLAS[analisis]
-    return (plantilla
-            .replace("__ZONA__", zona)
-            .replace("__COORDS__", str(coords))
-            .replace("__FINI__", f_inicio)
-            .replace("__FFIN__", f_fin)
-            .replace("__ESCALA__", str(escala))
-            .replace("__DIAS__", str(plan.get("dias") or 15)))
+    codigo = (plantilla
+              .replace("__ZONA__", zona)
+              .replace("__COORDS__", str(coords))
+              .replace("__FINI__", f_inicio)
+              .replace("__FFIN__", f_fin)
+              .replace("__ESCALA__", str(escala))
+              .replace("__DIAS__", str(plan.get("dias") or 15)))
+    return codigo + _bloque_descarga(
+        analisis, zona, escala, VARIABLE_SALIDA[analisis])
 
 
 def probar_generador():
