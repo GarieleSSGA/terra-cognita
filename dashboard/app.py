@@ -19,34 +19,34 @@ st.set_page_config(page_title="Terra Cognita", page_icon="🛰️", layout="wide
 st.html("""
 <style>
   .stApp {
-    background: radial-gradient(1200px 600px at 20% -10%, #12303f 0%, #0e1117 45%);
+    background: linear-gradient(180deg, #f0f6f3 0%, #ffffff 55%);
     font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #1c2b36;
   }
   [data-testid="stAppViewContainer"] {
-    background: radial-gradient(1200px 600px at 20% -10%, #12303f 0%, #0e1117 45%);
+    background: linear-gradient(180deg, #f0f6f3 0%, #ffffff 55%);
   }
   h1 { font-weight: 800; letter-spacing: -0.5px; }
-  h1, h2, h3 { color: #36c1a0 !important; }
+  h1, h2, h3 { color: #145a4a !important; }
   [data-testid="stMetric"] {
-    background: linear-gradient(160deg, #13202c 0%, #0d141d 100%);
-    border: 1px solid #1e3a4a; border-radius: 14px; padding: 14px 16px;
-    box-shadow: 0 4px 14px rgba(0,0,0,.35);
+    background: #ffffff; border: 1px solid #dce8e1; border-radius: 14px;
+    padding: 14px 16px; box-shadow: 0 2px 10px rgba(20,90,74,.08);
   }
-  [data-testid="stMetricValue"] { color: #40e0b0; font-size: 1.7rem !important; }
-  [data-testid="stMetricLabel"] { color: #7ec8ff; text-transform: uppercase;
+  [data-testid="stMetricValue"] { color: #145a4a; font-size: 1.7rem !important; }
+  [data-testid="stMetricLabel"] { color: #4a6b5f; text-transform: uppercase;
     letter-spacing: .06em; font-size: .78rem !important; }
   .stButton>button {
-    background: linear-gradient(90deg, #16a085, #36c1a0);
-    color: #04121a; font-weight: 700; border: none; border-radius: 10px;
+    background: linear-gradient(90deg, #2e8b57, #3aa876);
+    color: #ffffff; font-weight: 700; border: none; border-radius: 10px;
     padding: .55rem 2rem;
   }
-  .stButton>button:hover { filter: brightness(1.12); }
+  .stButton>button:hover { filter: brightness(1.08); }
   [data-testid="stVerticalBlockBorderWrapper"] {
-    background: rgba(19,31,43,.55);
-    border: 1px solid #1e3a4a; border-radius: 16px;
+    background: rgba(255,255,255,.75);
+    border: 1px solid #dce8e1; border-radius: 16px;
   }
   [data-testid="stDataFrame"] { border-radius: 12px; overflow: hidden; }
-  .stCaption { color: #7f94a5; }
+  .stCaption { color: #5a6f66; }
 </style>
 """)
 

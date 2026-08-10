@@ -1,0 +1,127 @@
+GUION PARA GENERAR EL PPT DE PRESENTACION — TERRA COGNITA
+(DataHub Community Hackathon - "Agents that do real work")
+==============================================================
+
+Cada bloque = 1-2 diapositivas. Copia las bullets a tu plantilla y usa
+capturas reales de la demo (dashboard, flujo, grafo DataHub, Telegram).
+
+--------------------------------------------------------------
+1) PORTADA
+--------------------------------------------------------------
+- Titulo: "TERRA COGNITA - Agente espacial que NO alucina"
+- Subtitulo: IA local/opencode + DataHub MCP + Google Earth Engine
+  + alertas Telegram
+- Tu nombre / equipo
+- Captura sugerida: dashboard con mapa NDVI
+
+--------------------------------------------------------------
+2) PROBLEMA
+--------------------------------------------------------------
+- Analizar riesgo espacial (sequia, lluvia, humedad) toma DIAS:
+  datos fragmentados, SIG complejo, requiere expertos
+- Los datos existen pero nadie los pregunta en lenguaje natural
+- Resultados sin trazabilidad: no se sabe de donde salio cada numero
+- Alertas genericas que no distinguen severidad
+
+--------------------------------------------------------------
+3) SOLUCION (1 frase gancho)
+--------------------------------------------------------------
+- "Preguntas en espanol y en ~1 minuto tienes mapa, tendencia,
+  linaje y aviso por Telegram"
+- De dias a minutos; de experto GIS a cualquier persona
+- Cada numero se puede rastrear hasta su fuente (linaje)
+
+--------------------------------------------------------------
+4) ARQUITECTURA (diagrama, imprescindible)
+--------------------------------------------------------------
+- Usuario (chat) -> AGENTE (cadena: opencode -> Ollama -> API -> heuristica)
+- Agente -> contexto en DataHub via MCP (search/schema/lineage)
+- Agente -> analisis geoespacial (rasters sinteticos o GEE real
+  Sentinel-2, CHIRPS, SMAP, MODIS)
+- Agente -> write-back a DataHub con upstreamLineage
+- Agente -> reporte/alerta Telegram + dashboard (mapa + tendencia)
+- Punto clave: el agente pregunta ANTES de actuar y ESCRIBE de vuelta
+
+--------------------------------------------------------------
+5) AGENTE QUE NO ALUCINA (DataHub = memoria)  <-- criterio fuerte
+--------------------------------------------------------------
+- Antes de responder consulta el grafo: que datasets hay, que
+  columnas, de donde vienen (mcp search_datasets, get_lineage)
+- Razonamiento basado en el grafo real, no en "lo que cree"
+- Evidencia: 29+ datasets escritos por el agente en el grafo
+- Demo en vivo: abrir :9002 -> buscar "tendencia" -> pestana
+  Lineage -> resumen apuntando a sus 7 rasters diarios
+
+--------------------------------------------------------------
+6) IA EN CUALQUIER MAQUINA (innovacion)
+--------------------------------------------------------------
+- Cadena de interpretes que NUNCA se rompe
+- opencode: IA potente con 0 RAM local (demostrado en PC con 8 GB
+  con DataHub activo -> ~0.3 GB libres y el agente sigue inteligente)
+- Con RAM suficiente: Ollama local = 100% privado
+- Es decir: no necesitas GPU para tener un geo-agente potente
+
+--------------------------------------------------------------
+7) GOOGLE EARTH ENGINE: EL AGENTE ES PROGRAMA
+--------------------------------------------------------------
+- Genera codigo JavaScript de GEE ad-hoc por consulta (7 tipos:
+  NDVI, lluvia, humedad, NDWI, LST, EVI, serie temporal)
+- Bbox pequeno (~2 km) = descargas rapidas dentro de cuota gratuita
+- Descarga automatica con getDownloadURL + Export a Drive
+- Demo en vivo: expander "Codigo GEE" del dashboard
+
+--------------------------------------------------------------
+8) ALERTA TEMPRANA RAZONADA (cierre del ciclo)
+--------------------------------------------------------------
+- El agente NO envia un boton fijo: razona el resultado y decide
+  (ALERTA / OBSERVACION / OK)
+- Reporte cada consulta a Telegram (reporte_siempre) con informe
+  legible: tabla por dia, delta, conclusion, URN DataHub
+- Demo: consulta de lluvia alta -> llega alerta al movil
+
+--------------------------------------------------------------
+9) VISUALIZACION (dashboard)
+--------------------------------------------------------------
+- Mapa NDVI interactivo (folium) con selectbox por dia de la serie
+- Graficos de tendencia: % area bajo umbral + NDVI medio por dia
+- Estado del stack en vivo (MCP / GMS / Ollama)
+- Multianalisis: ndvi, lluvia, humedad, ndwi, lst, evi
+- Prueba de fuerza: "dame la vegetacion de Lima de los ultimos 7 dias"
+
+--------------------------------------------------------------
+10) ROBUSTEZ (por que confiar)
+--------------------------------------------------------------
+- Todo con fallback en cascada: MCP caido -> sigue; GMS caido ->
+  write-back local; sin IA -> heuristica; la demo nunca se cuelga
+- Datos sinteticos reproducibles; GEE real cambia en 1 linea
+  (fuente_default: gee) - mismo pipeline, mismos resultados
+- Secretos nunca en git (config.example.yaml)
+- Bitacora publica de errores y trampas del entorno (docs/BITACORA.md)
+
+--------------------------------------------------------------
+11) IMPACTO (para cerrar)
+--------------------------------------------------------------
+- Monitoreo ambiental accesible: gobiernos locales, agricultura,
+  transporte de aguas, ONGs
+- Trazabilidad total = confianza en la alerta
+- Repositorio publico con Apache 2.0 (reuso libre)
+- Demo reproducible con 1 PC comun
+
+--------------------------------------------------------------
+12) CIERRE / GRACIAS
+--------------------------------------------------------------
+- Frasse final: "Terra Cognita: datos, memoria y agente - el ciclo
+  completo para actuar a tiempo"
+- Links: repo, demo local (localhost:8501), DataHub UI (:9002)
+- Invitacion a probar el flujo narrado (flujo_paso_a_paso.py)
+
+--------------------------------------------------------------
+RECURSOS PARA CAPTURAS (en la maquina)
+--------------------------------------------------------------
+- Dashboard: http://localhost:8501 (ejecuta tendencia de 7 dias)
+- Flujo narrado: .venv\Scripts\python.exe scripts\flujo_paso_a_paso.py
+  --presentacion "dame la vegetacion de Lima de los ultimos 7 dias"
+- Grafo DataHub: http://localhost:9002 (login datahub/datahub)
+  buscar "tendencia" -> Lineage
+- Informe Telegram: tu chat con el bot (mensajes 32-35 ya enviados)
+- Docs de apoyo: README.md, docs/BENEFICIOS.md, docs/PRUEBAS.md
