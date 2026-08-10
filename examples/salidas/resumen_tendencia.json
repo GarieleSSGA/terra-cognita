@@ -1,0 +1,11 @@
+{
+  "zona": "lima",
+  "tipo_analisis": "tendencia",
+  "estado": "OBSERVACION",
+  "tendencia": "vegetacion estable. OBSERVACION: deterioro leve",
+  "delta_pct": 3.1,
+  "pct_bajo_inicial": 37.7,
+  "pct_bajo_final": 40.8,
+  "delta_media_ndvi": -0.012,
+  "urn_datahub": "urn:li:dataset:(urn:li:dataPlatform:terraCognita,analisis_Lima_tendencia_f0feac,PROD)"
+}

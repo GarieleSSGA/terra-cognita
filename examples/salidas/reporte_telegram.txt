@@ -1,0 +1,22 @@
+🛰️ TERRA COGNITA — Reporte de analisis
+---------------------------------------
+📍 Zona     : lima
+🔎 Analisis : ndvi (tendencia)
+📅 Emitido  : 2026-08-10
+📌 Estado   : OBSERVACION
+🗓 Periodo  : 2026-08-04 -> 2026-08-10
+
+Fecha        %bajo  NDVI
+-----------  -----  -----
+2026-08-04  37.7%  0.344
+2026-08-05  38.3%  0.344
+2026-08-06  38.7%  0.342
+2026-08-07  39.2%  0.340
+2026-08-08  39.8%  0.337
+2026-08-09  40.3%  0.335
+2026-08-10  40.8%  0.332
+
+Cambio: area bajo umbral 37.7% -> 40.8% (delta +3.1pp) · NDVI medio -0.012
+Conclusion: vegetacion estable. OBSERVACION: deterioro leve
+
+🔗 DataHub: analisis_Lima_tendencia_f0feac (ver linaje en :9002)
