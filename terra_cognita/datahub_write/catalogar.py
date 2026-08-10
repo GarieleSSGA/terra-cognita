@@ -25,6 +25,22 @@ def _emitter():
     return DatahubRestEmitter(gms_server=cfg["datahub"]["gms_url"])
 
 
+def _aspectos_gobernanza(descripcion: str):
+    """Ownership (agente) + tag del proyecto: gobernanza visible en el grafo."""
+    from datetime import datetime, timezone
+    from datahub.metadata.schema_classes import (
+        AuditStampClass, GlobalTagsClass, OwnerClass, OwnershipClass,
+        OwnershipTypeClass, TagAssociationClass)
+    timestamp = int(datetime.now(timezone.utc).timestamp() * 1000)
+    actor = "urn:li:corpuser:terra-cognita"
+    ownership = OwnershipClass(
+        owners=[OwnerClass(owner=actor, type=OwnershipTypeClass.DATAOWNER)],
+        lastModified=AuditStampClass(time=timestamp, actor=actor),
+    )
+    tags = GlobalTagsClass(tags=[TagAssociationClass(tag="urn:li:tag:terra-cognita")])
+    return [ownership, tags]
+
+
 def _emit_mce(urn: str, aspectos: list) -> None:
     from datahub.metadata.schema_classes import (
         DatasetSnapshotClass, MetadataChangeEventClass)
@@ -56,7 +72,7 @@ def asegurar_raster_fuente(zona: str, ruta_raster: str) -> str:
             "Generado por Terra Cognita para la demo rapida."
         ),
     )
-    _emit_mce(urn, [aspecto])
+    _emit_mce(urn, [aspecto] + _aspectos_gobernanza(aspecto.description or ""))
     return urn
 
 
@@ -83,7 +99,8 @@ def escribir_resultado(resultado: dict, consulta: str) -> str:
         aspecto_lineage = UpstreamLineageClass(
             upstreams=[UpstreamClass(dataset=urn_fuente, type="TRANSFORMED")],
         )
-        _emit_mce(urn, [aspecto_props, aspecto_lineage])
+        _emit_mce(urn, [aspecto_props, aspecto_lineage]
+                  + _aspectos_gobernanza(aspecto_props.description or ""))
         return urn
     except Exception as exc:
         ruta = Path("data/resultados_catalogados")
@@ -126,7 +143,7 @@ def escribir_serie(resultado: dict, consulta: str) -> str:
                     f"pct_bajo={item.get('pct_bajo')}%, "
                     f"media={item.get('media_ndvi')}. Fuente: {ruta}"
                 ),
-            )])
+            )] + _aspectos_gobernanza("Serie temporal raster"))
             upstreams.append(UpstreamClass(dataset=urn_dia, type="TRANSFORMED"))
 
         desc = (f"Serie temporal {analisis} de {zona} "
@@ -140,7 +157,7 @@ def escribir_serie(resultado: dict, consulta: str) -> str:
                 description=desc,
             ),
             UpstreamLineageClass(upstreams=upstreams),
-        ])
+        ] + _aspectos_gobernanza("Serie temporal resumen"))
         return urn_resumen
     except Exception as exc:
         ruta = Path("data/resultados_catalogados")
